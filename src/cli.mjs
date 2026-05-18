@@ -95,3 +95,14 @@ Usage:
   lime-agent-app-studio studio --port 4177
 `);
 }
+
+function isMainModule() {
+  return process.argv[1] && import.meta.url === new URL(process.argv[1], "file:").href;
+}
+
+if (isMainModule()) {
+  runCli(process.argv.slice(2)).catch((error) => {
+    console.error(error?.message || String(error));
+    process.exitCode = 1;
+  });
+}

@@ -5,36 +5,121 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Lime Agent App Studio</title>
     <link rel="stylesheet" href="/styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "@lime/app-sdk": "/vendor/lime-app-sdk/index.js"
+        }
+      }
+    </script>
   </head>
   <body>
     <main class="shell">
-      <section class="hero">
-        <p class="eyebrow">Lime Developer Tool</p>
-        <h1>Agent App 发布工作台</h1>
-        <p>诊断本地 Agent App，预演发布计划，并在通过开发者认证后上传到 LimeCore 云端 Release。</p>
+      <section class="topbar" aria-label="应用状态">
+        <div>
+          <p class="eyebrow">Lime Agent App Studio</p>
+          <h1 id="pageTitle">选择目录，一键发布应用</h1>
+        </div>
+        <span id="status" class="status-pill">等待目录</span>
       </section>
 
-      <section class="panel form-panel">
-        <label>App 目录 <input id="appDir" value="." /></label>
-        <label>App ID <input id="appId" placeholder="自动识别或手动填写" /></label>
-        <label>Tenant ID <input id="tenantId" placeholder="tenant-0001" /></label>
-        <label>API Base <input id="apiBase" placeholder="https://lime-api.limeai.run/api" /></label>
-        <label>Token <input id="token" type="password" placeholder="开发者 token" /></label>
-        <label>Channel <input id="channel" value="beta" /></label>
-        <div class="actions">
-          <button id="inspectBtn">诊断项目</button>
-          <button id="dryRunBtn">Dry-run</button>
-          <button id="publishBtn" class="danger">正式发布</button>
+      <section class="panel hero-panel" aria-labelledby="pageTitle">
+        <div class="hero-copy">
+          <p class="section-label">自动生成</p>
+          <p class="intro-copy">你只需要选择本地应用目录。Studio 会自动识别应用名称、生成图标、推荐类型和分类，默认隐藏认证与技术参数。</p>
+        </div>
+        <div class="stage-rail" aria-label="发布阶段">
+          <span id="stageSelect" class="stage active">1 选择目录</span>
+          <span id="stageGenerate" class="stage">2 自动生成</span>
+          <span id="stageUpload" class="stage">3 上传 / 更新</span>
         </div>
       </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>结果</h2>
-          <span id="status">等待操作</span>
-        </div>
-        <pre id="output">选择本地 Agent App 目录后开始。</pre>
+      <section class="workspace" aria-label="发布工作台">
+        <section class="panel main-panel" aria-label="选择应用目录">
+          <div class="step-head">
+            <span class="step-index">第一步</span>
+            <div>
+              <h2>选择应用目录</h2>
+              <p>选择包含 <code>APP.md</code> 的目录即可，其他信息会自动补齐。</p>
+            </div>
+          </div>
+
+          <div class="picker-card">
+            <div>
+              <p class="picker-title">当前目录</p>
+              <p id="dirText" class="dir-text">尚未选择</p>
+            </div>
+            <div class="picker-actions">
+              <button id="selectDirBtn" class="button primary" type="button">选择应用目录</button>
+              <button id="inspectBtn" class="button ghost" type="button" disabled>重新识别</button>
+            </div>
+          </div>
+
+          <p id="activityText" class="activity-text">等待选择目录。选好后会自动生成图标、类型和分类。</p>
+        </section>
+
+        <aside class="panel preview-panel" aria-label="自动生成结果">
+          <div class="preview-head">
+            <div id="iconPreview" class="icon-preview" aria-hidden="true">App</div>
+            <div>
+              <p class="section-label">生成结果</p>
+              <h2 id="appTitle">等待选择目录</h2>
+              <p id="appMeta">图标、类型和分类会自动生成。</p>
+            </div>
+          </div>
+
+          <div class="generated-list">
+            <div class="generated-row">
+              <span>应用图标</span>
+              <strong id="autoIconState">自动生成</strong>
+            </div>
+            <div class="generated-row">
+              <span>应用类型</span>
+              <strong id="autoType">自动推荐</strong>
+            </div>
+            <div class="generated-row">
+              <span>分类</span>
+              <div id="categoryChips" class="chips">
+                <span>自动分类</span>
+              </div>
+            </div>
+          </div>
+        </aside>
       </section>
+
+      <section class="panel action-panel" aria-label="一键发布">
+        <div>
+          <p class="section-label">第二步</p>
+          <h2 id="nextStepTitle">选择目录后即可发布</h2>
+          <p id="nextStepCopy">Studio 默认读取本机开发者认证；需要覆盖时再展开高级设置。</p>
+        </div>
+        <div class="action-stack">
+          <button id="publishBtn" class="button publish" type="button" disabled>一键上传 / 更新到云端</button>
+          <button id="dryRunBtn" class="button secondary" type="button" disabled>先预演</button>
+        </div>
+      </section>
+
+      <details class="panel advanced-panel">
+        <summary>高级设置 / 认证与技术参数</summary>
+        <p class="advanced-hint">默认会从本机配置读取认证信息，普通发布不需要填写这些字段。</p>
+        <div class="advanced-grid">
+          <label>手动目录 <input id="appDir" placeholder="/path/to/agent-app" /></label>
+          <label>App ID 覆盖 <input id="appId" placeholder="默认自动识别" /></label>
+          <label>Tenant ID <input id="tenantId" placeholder="从本机配置读取" /></label>
+          <label>API Base <input id="apiBase" placeholder="https://lime-api.limeai.run/api" /></label>
+          <label>开发者 Token <input id="token" type="password" placeholder="默认从本机配置读取" /></label>
+          <label>Channel <input id="channel" value="beta" /></label>
+        </div>
+      </details>
+
+      <details id="logPanel" class="panel result-panel">
+        <summary>
+          <span>运行明细</span>
+          <small>只有排查问题时需要查看</small>
+        </summary>
+        <div id="output" class="output-card">暂无运行明细。</div>
+      </details>
     </main>
     <script type="module" src="/app.js"></script>
   </body>

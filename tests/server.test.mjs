@@ -14,8 +14,8 @@ async function createFixture() {
   return root;
 }
 
-async function withServer(callback) {
-  const { server, url } = await startStudioServer({ port: 0 });
+async function withServer(callback, options = {}) {
+  const { server, url } = await startStudioServer({ ...options, port: 0 });
   try {
     return await callback(url);
   } finally {
@@ -63,4 +63,17 @@ test("Studio server 暴露 Lime runtime 健康检查与页面路由回退", asyn
     assert.equal(dashboard.status, 200);
     assert.match(await dashboard.text(), /Lime Agent App Studio/);
   });
+});
+
+test("Studio server 支持注入目录选择器", async () => {
+  await withServer(
+    async (url) => {
+      const response = await fetch(`${url}/api/select-directory`, { method: "POST" });
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { path: "/tmp/lime-app" });
+    },
+    {
+      selectDirectory: async () => ({ path: "/tmp/lime-app" }),
+    },
+  );
 });

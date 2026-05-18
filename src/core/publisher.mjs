@@ -18,6 +18,9 @@ export async function buildPublishPlan(options = {}) {
     appId,
     version: options.version || inspection.version,
     manifestVersion: inspection.manifestVersion || "0.6.0",
+    appType: inspection.appType,
+    categories: inspection.categories,
+    generated: inspection.generated,
     channel,
     publishable: inspection.publishable && Boolean(appId),
     issues: inspection.issues,
@@ -58,9 +61,63 @@ export async function publishProject(options = {}) {
     signatureRef: upload.signatureRef,
     runtimeTargets: upload.runtimeTargets,
     capabilityRequirements: upload.capabilityRequirements || {},
-    manifestSummary: upload.manifestSummary || {},
+    manifestSummary: {
+      ...(upload.manifestSummary || {}),
+      generated: plan.generated,
+      appType: plan.appType,
+      categories: plan.categories,
+    },
     status: options.status || "ready",
   };
-  const release = await createDeveloperAgentAppRelease({ ...options, appId: plan.appId, payload: releasePayload });
-  return { mode: "publish", plan, profile, packaged, upload, release };
+  const { release, versionConflictResolved, originalVersion } =
+    await createReleaseWithDevelopmentVersionRetry({
+      options,
+      appId: plan.appId,
+      payload: releasePayload,
+    });
+  return {
+    mode: "publish",
+    plan,
+    profile,
+    packaged,
+    upload,
+    release,
+    versionConflictResolved,
+    originalVersion,
+    publishedVersion: release?.version || releasePayload.version,
+  };
+}
+
+async function createReleaseWithDevelopmentVersionRetry({ options, appId, payload }) {
+  try {
+    const release = await createDeveloperAgentAppRelease({ ...options, appId, payload });
+    return { release, versionConflictResolved: false, originalVersion: payload.version };
+  } catch (error) {
+    if (options.autoVersionOnConflict === false || !isReleaseAlreadyExistsError(error)) {
+      throw error;
+    }
+    const retryPayload = {
+      ...payload,
+      version: buildConflictResolutionVersion(payload.version, options.now),
+    };
+    const release = await createDeveloperAgentAppRelease({ ...options, appId, payload: retryPayload });
+    return { release, versionConflictResolved: true, originalVersion: payload.version };
+  }
+}
+
+export function isReleaseAlreadyExistsError(error) {
+  const message = String(error?.message || error || "");
+  return (
+    (error?.status === 400 || error?.status === 409 || /\b400\b|\b409\b/.test(message)) &&
+    /agent app release already exists/i.test(message)
+  );
+}
+
+export function buildConflictResolutionVersion(version, now = new Date()) {
+  const baseVersion = String(version || "0.0.0").trim().replace(/\+.*/, "") || "0.0.0";
+  const date = now instanceof Date ? now : new Date(now);
+  const stamp = Number.isNaN(date.getTime())
+    ? String(Date.now())
+    : date.toISOString().replace(/\D/g, "").slice(0, 17);
+  return `${baseVersion}+studio.${stamp}`;
 }

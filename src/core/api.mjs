@@ -57,7 +57,10 @@ async function requestRaw(url, options = {}) {
   const payload = contentType.includes("application/json") ? await response.json() : await response.text();
   if (!response.ok) {
     const message = typeof payload === "object" && payload ? payload.message || payload.error : payload;
-    throw new Error(`${response.status} ${message || response.statusText}`);
+    const error = new Error(`${response.status} ${message || response.statusText}`);
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
   }
   return payload;
 }

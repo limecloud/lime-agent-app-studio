@@ -6,12 +6,18 @@ import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveAuthContext } from "./core/config.mjs";
+import {
+  LIME_APP_SDK_PUBLIC_PREFIX,
+  resolveLimeAppSdkVendorFile,
+} from "./core/lime-app-sdk-vendor.mjs";
+import { selectDirectory } from "./core/directory-picker.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const appRoot = join(root, "app");
 
 export async function startStudioServer(options = {}) {
   const port = Number(options.port ?? 4177);
+  const directoryPicker = options.selectDirectory ?? selectDirectory;
   const server = createServer(async (req, res) => {
     try {
       if (req.method === "GET" && req.url === "/api/bootstrap") {
@@ -20,6 +26,9 @@ export async function startStudioServer(options = {}) {
           status: "ok",
           entry: "dashboard",
         });
+      }
+      if (req.method === "POST" && req.url === "/api/select-directory") {
+        return sendJson(res, await directoryPicker());
       }
       if (req.method === "POST" && req.url === "/api/inspect") {
         const body = await readJson(req);
@@ -46,6 +55,18 @@ export async function startStudioServer(options = {}) {
 async function serveStatic(req, res) {
   const pathname = req.url === "/" ? "/index.html" : req.url.split("?")[0];
   if (pathname === "/favicon.ico") return sendNoContent(res);
+  if (pathname.startsWith(LIME_APP_SDK_PUBLIC_PREFIX)) {
+    const sdkFilePath = await resolveLimeAppSdkVendorFile(root, pathname);
+    if (!sdkFilePath) return sendNotFound(res);
+    try {
+      return sendBuffer(res, sdkFilePath, await readFile(sdkFilePath));
+    } catch (error) {
+      if (error?.code === "ENOENT" || error?.code === "EISDIR") {
+        return sendNotFound(res);
+      }
+      throw error;
+    }
+  }
   const safePath = pathname.replace(/\.\./g, "");
   const filePath = join(appRoot, safePath);
   let content;
