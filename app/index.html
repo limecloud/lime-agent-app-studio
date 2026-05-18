@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lime Agent App Studio</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Lime Developer Tool</p>
+        <h1>Agent App 发布工作台</h1>
+        <p>诊断本地 Agent App，预演发布计划，并在通过开发者认证后上传到 LimeCore 云端 Release。</p>
+      </section>
+
+      <section class="panel form-panel">
+        <label>App 目录 <input id="appDir" value="." /></label>
+        <label>App ID <input id="appId" placeholder="自动识别或手动填写" /></label>
+        <label>Tenant ID <input id="tenantId" placeholder="tenant-0001" /></label>
+        <label>API Base <input id="apiBase" placeholder="https://api.limecloud.run/api" /></label>
+        <label>Token <input id="token" type="password" placeholder="开发者 token" /></label>
+        <label>Channel <input id="channel" value="beta" /></label>
+        <div class="actions">
+          <button id="inspectBtn">诊断项目</button>
+          <button id="dryRunBtn">Dry-run</button>
+          <button id="publishBtn" class="danger">正式发布</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>结果</h2>
+          <span id="status">等待操作</span>
+        </div>
+        <pre id="output">选择本地 Agent App 目录后开始。</pre>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

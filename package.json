@@ -1,0 +1,35 @@
+{
+  "name": "@limecloud/agent-app-studio",
+  "version": "0.1.0",
+  "description": "Lime Agent App Studio CLI and visual publisher for Agent App packages.",
+  "type": "module",
+  "private": false,
+  "license": "Apache-2.0",
+  "bin": {
+    "lime-agent-app-studio": "bin/lime-agent-app-studio.mjs",
+    "lime-agent-app": "bin/lime-agent-app-studio.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "app",
+    "docs/v1/README.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "pack:dry-run": "npm pack --dry-run",
+    "publish:dry-run": "npm publish --access public --dry-run",
+    "publish:npm": "npm publish --access public"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "yazl": "^3.3.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
