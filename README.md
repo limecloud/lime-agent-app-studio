@@ -17,5 +17,5 @@ lime-agent-app-studio studio --port 4177
 
 环境变量：
 
-- `LIMECORE_API_BASE_URL`：LimeCore API base，默认 `https://api.limecloud.run/api`
+- `LIMECORE_API_BASE_URL`：LimeCore API base，默认 `https://lime-api.limeai.run/api`
 - `LIME_AGENT_APP_STUDIO_TOKEN`：开发者登录 token，CI/CD 推荐使用

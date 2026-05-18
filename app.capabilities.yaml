@@ -1,0 +1,22 @@
+# Lime Agent App Studio 能力声明。
+capabilities:
+  lime.ui:
+    features:
+      - pages
+      - developer-console
+    routes:
+      - path: /dashboard
+        component: ./dist/ui/index.html
+        title: 发布工作台
+      - path: /cli
+        component: ./dist/ui/index.html
+        title: CLI 快速开始
+  lime.files:
+    required: false
+    reason: 选择本地 Agent App 目录用于诊断和打包。
+  lime.agent:
+    required: false
+    reason: 后续版本用于生成发布前检查和修复建议。
+  lime.evidence:
+    required: false
+    reason: 记录 dry-run 与发布审计证据。

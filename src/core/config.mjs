@@ -7,11 +7,10 @@ import { homedir } from "node:os";
 
 const defaultConfigDir = join(homedir(), ".lime", "agent-app-studio");
 const defaultConfigPath = join(defaultConfigDir, "config.json");
+const defaultApiBase = "https://lime-api.limeai.run/api";
 
 export function resolveApiBase(options = {}) {
-  return trimTrailingSlash(
-    options.apiBase || process.env.LIMECORE_API_BASE_URL || "https://api.limecloud.run/api"
-  );
+  return trimTrailingSlash(options.apiBase || process.env.LIMECORE_API_BASE_URL || defaultApiBase);
 }
 
 export async function loadStudioConfig() {

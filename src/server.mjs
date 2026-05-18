@@ -13,7 +13,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const appRoot = join(root, "app");
 
 export async function startStudioServer(options = {}) {
-  const port = Number(options.port || 4177);
+  const port = Number(options.port ?? 4177);
   const server = createServer(async (req, res) => {
     try {
       if (req.method === "POST" && req.url === "/api/inspect") {
@@ -31,14 +31,25 @@ export async function startStudioServer(options = {}) {
     }
   });
   await new Promise((resolve) => server.listen(port, resolve));
-  return { server, url: `http://127.0.0.1:${port}` };
+  const address = server.address();
+  const actualPort = typeof address === "object" && address ? address.port : port;
+  return { server, url: `http://127.0.0.1:${actualPort}` };
 }
 
 async function serveStatic(req, res) {
   const pathname = req.url === "/" ? "/index.html" : req.url.split("?")[0];
+  if (pathname === "/favicon.ico") return sendNoContent(res);
   const safePath = pathname.replace(/\.\./g, "");
   const filePath = join(appRoot, safePath);
-  const content = await readFile(filePath);
+  let content;
+  try {
+    content = await readFile(filePath);
+  } catch (error) {
+    if (error?.code === "ENOENT" || error?.code === "EISDIR") {
+      return sendNotFound(res);
+    }
+    throw error;
+  }
   const type = contentType(filePath);
   res.writeHead(200, { "Content-Type": type });
   res.end(content);
@@ -54,6 +65,16 @@ async function readJson(req) {
 function sendJson(res, payload, status = 200) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(payload, null, 2));
+}
+
+function sendNoContent(res) {
+  res.writeHead(204, { "Content-Length": "0" });
+  res.end();
+}
+
+function sendNotFound(res) {
+  res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+  res.end("Not Found");
 }
 
 function contentType(path) {
