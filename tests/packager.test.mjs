@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { packageProject } from "../src/core/packager.mjs";
+import { collectPackageFiles, packageProject } from "../src/core/packager.mjs";
 
 async function createFixture() {
   const root = await mkdtemp(join(tmpdir(), "lime-agent-app-studio-pack-"));
@@ -21,4 +21,16 @@ test("packageProject 生成 .lapp 与 sha256", async () => {
   assert.match(result.packageHash, /^sha256:[a-f0-9]{64}$/);
   assert.match(result.manifestHash, /^sha256:[a-f0-9]{64}$/);
   assert.ok((await stat(result.packagePath)).size > 0);
+});
+
+test("collectPackageFiles 默认排除 node_modules，需要时可显式包含", async () => {
+  const root = await createFixture();
+  await mkdir(join(root, "node_modules", "runtime-dep"), { recursive: true });
+  await writeFile(join(root, "node_modules", "runtime-dep", "index.js"), "export default true;");
+
+  const defaultFiles = await collectPackageFiles(root);
+  assert.equal(defaultFiles.some((file) => file.startsWith("node_modules/")), false);
+
+  const runtimeFiles = await collectPackageFiles(root, { includeNodeModules: true });
+  assert.equal(runtimeFiles.includes("node_modules/runtime-dep/index.js"), true);
 });

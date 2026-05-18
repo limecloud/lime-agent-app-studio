@@ -9,7 +9,7 @@ test("Studio 自身也是可发布的 Agent App", async () => {
   const root = resolve(".");
   const result = await inspectProject(root);
   assert.equal(result.appId, "lime-agent-app-studio");
-  assert.equal(result.version, "0.1.2");
+  assert.equal(result.version, "0.1.3");
   assert.equal(result.manifestVersion, "0.7.0");
   assert.equal(result.publishable, true);
   assert.equal(result.files.appMd, true);
@@ -20,7 +20,7 @@ test("Studio 自身也是可发布的 Agent App", async () => {
 
 test("Studio 自身可以生成 .lapp 云端安装包", async () => {
   const result = await packageProject({ appDir: "." });
-  assert.equal(result.packageName, "lime-agent-app-studio-0.1.2.lapp");
+  assert.equal(result.packageName, "lime-agent-app-studio-0.1.3.lapp");
   assert.match(result.packageHash, /^sha256:[a-f0-9]{64}$/);
   assert.match(result.manifestHash, /^sha256:[a-f0-9]{64}$/);
   assert.ok((await stat(result.packagePath)).size > 0);

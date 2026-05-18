@@ -5,8 +5,6 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { inspectProject } from "./core/project.mjs";
-import { publishProject } from "./core/publisher.mjs";
 import { resolveAuthContext } from "./core/config.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -25,11 +23,13 @@ export async function startStudioServer(options = {}) {
       }
       if (req.method === "POST" && req.url === "/api/inspect") {
         const body = await readJson(req);
+        const { inspectProject } = await import("./core/project.mjs");
         return sendJson(res, await inspectProject(body.appDir || "."));
       }
       if (req.method === "POST" && req.url === "/api/publish") {
         const body = await readJson(req);
         const auth = await resolveAuthContext(body);
+        const { publishProject } = await import("./core/publisher.mjs");
         return sendJson(res, await publishProject({ ...body, ...auth }));
       }
       return serveStatic(req, res);

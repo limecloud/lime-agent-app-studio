@@ -27,7 +27,9 @@ export async function packageProject(options = {}) {
   await mkdir(outDir, { recursive: true });
   const packageName = `${inspection.appId}-${inspection.version}.lapp`;
   const packagePath = join(outDir, packageName);
-  const files = await collectPackageFiles(appDir);
+  const files = await collectPackageFiles(appDir, {
+    includeNodeModules: Boolean(options.includeNodeModules),
+  });
   await writeZip(appDir, files, packagePath);
 
   const packageHash = await sha256File(packagePath);
@@ -44,23 +46,27 @@ export async function packageProject(options = {}) {
   };
 }
 
-export async function collectPackageFiles(appDir) {
+export async function collectPackageFiles(appDir, options = {}) {
   const root = resolve(appDir);
   const result = [];
-  await walk(root, root, result);
+  const excludes = new Set(defaultExcludes);
+  if (options.includeNodeModules) {
+    excludes.delete("node_modules");
+  }
+  await walk(root, root, result, excludes);
   result.sort((a, b) => a.localeCompare(b));
   return result;
 }
 
-async function walk(root, current, result) {
+async function walk(root, current, result, excludes) {
   const entries = await readdir(current, { withFileTypes: true });
   for (const entry of entries) {
-    if (defaultExcludes.has(entry.name)) continue;
+    if (excludes.has(entry.name)) continue;
     if (entry.name === "dist-package") continue;
     const fullPath = join(current, entry.name);
     const rel = relative(root, fullPath).replace(/\\/g, "/");
     if (entry.isDirectory()) {
-      await walk(root, fullPath, result);
+      await walk(root, fullPath, result, excludes);
       continue;
     }
     if (entry.isFile()) result.push(rel);

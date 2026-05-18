@@ -42,7 +42,11 @@ export async function publishProject(options = {}) {
   if (profile.status !== "approved") {
     throw new Error(`当前账号未完成开发者认证：${profile.status}`);
   }
-  const packaged = await packageProject({ appDir: options.appDir, outDir: options.outDir });
+  const packaged = await packageProject({
+    appDir: options.appDir,
+    outDir: options.outDir,
+    includeNodeModules: Boolean(options.includeNodeModules),
+  });
   const upload = await uploadDeveloperAgentAppPackage({ ...options, appId: plan.appId, packagePath: packaged.packagePath });
   const releasePayload = {
     version: options.version || upload.version || packaged.version,

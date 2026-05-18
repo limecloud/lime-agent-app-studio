@@ -1,6 +1,6 @@
 {
   "name": "@limecloud/agent-app-studio",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Lime Agent App Studio CLI and visual publisher for Agent App packages.",
   "type": "module",
   "private": false,

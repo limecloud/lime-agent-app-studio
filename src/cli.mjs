@@ -19,7 +19,13 @@ export async function runCli(argv) {
     case "project inspect":
       return printJson(await inspectProject(options.appDir || "."));
     case "package":
-      return printJson(await packageProject({ appDir: options.appDir || ".", outDir: options.outDir }));
+      return printJson(
+        await packageProject({
+          appDir: options.appDir || ".",
+          outDir: options.outDir,
+          includeNodeModules: Boolean(options.includeNodeModules),
+        })
+      );
     case "publish": {
       const auth = await resolveAuthContext(options);
       return printJson(
@@ -83,7 +89,7 @@ Usage:
   lime-agent-app-studio auth login --tenant-id <id> --token <token> [--api-base <url>]
   lime-agent-app-studio auth status --tenant-id <id>
   lime-agent-app-studio project inspect --app-dir <path>
-  lime-agent-app-studio package --app-dir <path> [--out-dir <path>]
+  lime-agent-app-studio package --app-dir <path> [--out-dir <path>] [--include-node-modules]
   lime-agent-app-studio publish --app-dir <path> --app-id <id> --tenant-id <id> --channel beta --dry-run
   lime-agent-app-studio publish --app-dir <path> --app-id <id> --tenant-id <id> --channel stable --publish
   lime-agent-app-studio studio --port 4177
