@@ -16,6 +16,13 @@ export async function startStudioServer(options = {}) {
   const port = Number(options.port ?? 4177);
   const server = createServer(async (req, res) => {
     try {
+      if (req.method === "GET" && req.url === "/api/bootstrap") {
+        return sendJson(res, {
+          appId: "lime-agent-app-studio",
+          status: "ok",
+          entry: "dashboard",
+        });
+      }
       if (req.method === "POST" && req.url === "/api/inspect") {
         const body = await readJson(req);
         return sendJson(res, await inspectProject(body.appDir || "."));
@@ -46,10 +53,22 @@ async function serveStatic(req, res) {
     content = await readFile(filePath);
   } catch (error) {
     if (error?.code === "ENOENT" || error?.code === "EISDIR") {
+      if (acceptsHtml(req)) {
+        return sendFile(res, join(appRoot, "index.html"));
+      }
       return sendNotFound(res);
     }
     throw error;
   }
+  return sendBuffer(res, filePath, content);
+}
+
+async function sendFile(res, filePath) {
+  const content = await readFile(filePath);
+  return sendBuffer(res, filePath, content);
+}
+
+function sendBuffer(res, filePath, content) {
   const type = contentType(filePath);
   res.writeHead(200, { "Content-Type": type });
   res.end(content);
@@ -88,4 +107,18 @@ function contentType(path) {
     default:
       return "application/octet-stream";
   }
+}
+
+function acceptsHtml(req) {
+  const accept = req.headers.accept || "";
+  return accept.includes("text/html");
+}
+
+function isMainModule() {
+  return process.argv[1] && import.meta.url === new URL(process.argv[1], "file:").href;
+}
+
+if (isMainModule()) {
+  const { url } = await startStudioServer({ port: process.env.PORT });
+  console.log(`Lime Agent App Studio runtime 已启动：${url}`);
 }

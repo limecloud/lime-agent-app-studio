@@ -48,3 +48,19 @@ test("Studio server 对未知静态资源返回 404 而不是 500", async () => 
     assert.equal(await response.text(), "Not Found");
   });
 });
+
+test("Studio server 暴露 Lime runtime 健康检查与页面路由回退", async () => {
+  await withServer(async (url) => {
+    const bootstrap = await fetch(`${url}/api/bootstrap`);
+    assert.equal(bootstrap.status, 200);
+    const payload = await bootstrap.json();
+    assert.equal(payload.status, "ok");
+    assert.equal(payload.appId, "lime-agent-app-studio");
+
+    const dashboard = await fetch(`${url}/dashboard`, {
+      headers: { Accept: "text/html" },
+    });
+    assert.equal(dashboard.status, 200);
+    assert.match(await dashboard.text(), /Lime Agent App Studio/);
+  });
+});

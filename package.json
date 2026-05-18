@@ -1,6 +1,6 @@
 {
   "name": "@limecloud/agent-app-studio",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Lime Agent App Studio CLI and visual publisher for Agent App packages.",
   "type": "module",
   "private": false,
@@ -27,7 +27,8 @@
     "test": "node --test tests/*.test.mjs",
     "pack:dry-run": "npm pack --dry-run",
     "publish:dry-run": "npm publish --access public --dry-run",
-    "publish:npm": "npm publish --access public"
+    "publish:npm": "npm publish --access public",
+    "dev": "node src/server.mjs"
   },
   "engines": {
     "node": ">=20.0.0"
