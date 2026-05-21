@@ -146,6 +146,14 @@ export interface LimeAgentRunProjectionTaskSummary {
     evidenceCount: number;
     queueCount: number;
 }
+export interface LimeAgentRunProjectionMetrics {
+    providerName?: string;
+    modelName?: string;
+    modelLabel?: string;
+    tokenCount?: number;
+    tokenText?: string;
+    costText?: string;
+}
 export interface LimeAgentRunProjectionViewModel {
     orderedParts: LimeAgentRunProjectionPart[];
     actions: LimeAgentRunProjectionAction[];
@@ -153,6 +161,7 @@ export interface LimeAgentRunProjectionViewModel {
     evidence: LimeAgentRunProjectionEvidence[];
     diagnostics: LimeAgentRunProjectionDiagnostic[];
     task: LimeAgentRunProjectionTaskSummary;
+    metrics: LimeAgentRunProjectionMetrics;
     answerText: string;
     reasoningText: string;
 }
@@ -166,6 +175,9 @@ export declare const buildAgentRunProjectionViewModelFromState: typeof buildLime
 export declare const collectAgentRunProjectionSourceEvents: typeof collectLimeAgentRunProjectionSourceEvents;
 export interface LimeAgentRunProjectionSummaryLabels {
     status: string;
+    model: string;
+    tokens: string;
+    cost: string;
     pendingActions: string;
     tools: string;
     artifacts: string;

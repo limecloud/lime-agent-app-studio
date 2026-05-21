@@ -34,3 +34,20 @@ test("collectPackageFiles 默认排除 node_modules，需要时可显式包含",
   const runtimeFiles = await collectPackageFiles(root, { includeNodeModules: true });
   assert.equal(runtimeFiles.includes("node_modules/runtime-dep/index.js"), true);
 });
+
+test("collectPackageFiles 默认排除测试与原型大图目录", async () => {
+  const root = await createFixture();
+  await mkdir(join(root, "tests"), { recursive: true });
+  await mkdir(join(root, "docs", "prototypes", "screens"), { recursive: true });
+  await mkdir(join(root, ".github", "workflows"), { recursive: true });
+  await writeFile(join(root, "tests", "ui.test.mjs"), "test");
+  await writeFile(join(root, "docs", "prototypes", "screens", "contact-sheet.png"), "large");
+  await writeFile(join(root, ".github", "workflows", "ci.yml"), "name: ci");
+  await writeFile(join(root, "docs", "README.md"), "runtime docs");
+
+  const files = await collectPackageFiles(root);
+  assert.equal(files.includes("tests/ui.test.mjs"), false);
+  assert.equal(files.includes("docs/prototypes/screens/contact-sheet.png"), false);
+  assert.equal(files.includes(".github/workflows/ci.yml"), false);
+  assert.equal(files.includes("docs/README.md"), true);
+});

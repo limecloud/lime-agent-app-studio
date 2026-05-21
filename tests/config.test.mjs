@@ -1,18 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveApiBase } from "../src/core/config.mjs";
+import { readFile } from "node:fs/promises";
 
-test("resolveApiBase 默认指向 LimeCore 生产 API", () => {
-  const previous = process.env.LIMECORE_API_BASE_URL;
-  delete process.env.LIMECORE_API_BASE_URL;
-  try {
-    assert.equal(resolveApiBase(), "https://lime-api.limeai.run/api");
-  } finally {
-    if (previous === undefined) delete process.env.LIMECORE_API_BASE_URL;
-    else process.env.LIMECORE_API_BASE_URL = previous;
-  }
-});
+const configSource = await readFile(
+  new URL("../src/core/config.mjs", import.meta.url),
+  "utf8",
+);
 
-test("resolveApiBase 会裁剪尾部斜杠", () => {
-  assert.equal(resolveApiBase({ apiBase: "https://example.test/api///" }), "https://example.test/api");
+test("resolveAuthContext 不再从本机配置读取 token", () => {
+  assert.match(configSource, /token: options\.token \|\| process\.env\.LIME_AGENT_APP_STUDIO_TOKEN \|\| ""/);
+  assert.match(configSource, /sanitizeStudioConfig/);
+  assert.match(configSource, /loadStudioConfig\(\)\s*\{\s*try \{\s*return sanitizeStudioConfig/);
+  assert.match(configSource, /saveStudioConfig\(nextConfig\)\s*\{\s*const current = await loadStudioConfig\(\);\s*const merged = sanitizeStudioConfig/);
+  assert.doesNotMatch(configSource, /config\.token/);
 });

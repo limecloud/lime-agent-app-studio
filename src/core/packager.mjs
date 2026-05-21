@@ -10,12 +10,18 @@ import { inspectProject } from "./project.mjs";
 
 const defaultExcludes = new Set([
   ".git",
+  ".github",
   "node_modules",
   ".DS_Store",
   ".lime",
   ".local",
   "coverage",
+  "tests",
 ]);
+
+const defaultExcludedPathPrefixes = [
+  "docs/prototypes/",
+];
 
 export async function packageProject(options = {}) {
   const appDir = resolve(options.appDir || ".");
@@ -65,12 +71,18 @@ async function walk(root, current, result, excludes) {
     if (entry.name === "dist-package") continue;
     const fullPath = join(current, entry.name);
     const rel = relative(root, fullPath).replace(/\\/g, "/");
+    if (isExcludedPackagePath(rel)) continue;
     if (entry.isDirectory()) {
       await walk(root, fullPath, result, excludes);
       continue;
     }
     if (entry.isFile()) result.push(rel);
   }
+}
+
+function isExcludedPackagePath(rel) {
+  const normalized = rel.endsWith("/") ? rel : `${rel}/`;
+  return defaultExcludedPathPrefixes.some((prefix) => normalized.startsWith(prefix));
 }
 
 function writeZip(root, files, packagePath) {

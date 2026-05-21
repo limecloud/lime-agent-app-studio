@@ -1,5 +1,5 @@
 // input: 环境变量、本机配置文件与 CLI 显式参数
-// output: Studio API base、tenantId 与 token
+// output: Studio API base、tenantId 与临时 token 来源
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -15,7 +15,7 @@ export function resolveApiBase(options = {}) {
 
 export async function loadStudioConfig() {
   try {
-    return JSON.parse(await readFile(defaultConfigPath, "utf8"));
+    return sanitizeStudioConfig(JSON.parse(await readFile(defaultConfigPath, "utf8")));
   } catch (error) {
     return {};
   }
@@ -23,7 +23,7 @@ export async function loadStudioConfig() {
 
 export async function saveStudioConfig(nextConfig) {
   const current = await loadStudioConfig();
-  const merged = { ...current, ...nextConfig };
+  const merged = sanitizeStudioConfig({ ...current, ...nextConfig });
   await mkdir(defaultConfigDir, { recursive: true });
   await writeFile(defaultConfigPath, `${JSON.stringify(merged, null, 2)}\n`);
   return merged;
@@ -32,12 +32,20 @@ export async function saveStudioConfig(nextConfig) {
 export async function resolveAuthContext(options = {}) {
   const config = await loadStudioConfig();
   return {
-    apiBase: resolveApiBase(options.apiBase ? options : config),
+    apiBase: resolveApiBase(options.apiBase || config.apiBase),
     tenantId: options.tenantId || process.env.LIMECORE_TENANT_ID || config.tenantId || "",
-    token: options.token || process.env.LIME_AGENT_APP_STUDIO_TOKEN || config.token || "",
+    token: options.token || process.env.LIME_AGENT_APP_STUDIO_TOKEN || "",
   };
 }
 
 function trimTrailingSlash(value) {
   return String(value || "").replace(/\/+$/, "");
+}
+
+function sanitizeStudioConfig(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const { token: _token, ...rest } = value;
+  return rest;
 }

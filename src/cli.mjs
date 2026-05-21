@@ -2,7 +2,7 @@
 // output: auth、inspect、package、publish 与可视化工作台
 
 import { parseArgs } from "./core/args.mjs";
-import { loadStudioConfig, resolveAuthContext, saveStudioConfig } from "./core/config.mjs";
+import { resolveAuthContext, saveStudioConfig } from "./core/config.mjs";
 import { getDeveloperProfile } from "./core/api.mjs";
 import { inspectProject } from "./core/project.mjs";
 import { packageProject } from "./core/packager.mjs";
@@ -51,27 +51,31 @@ export async function runCli(argv) {
 }
 
 async function authLogin(options) {
-  if (!options.token) {
-    throw new Error("请通过 --token 传入开发者 token；后续版本会接入浏览器 / 设备码登录。");
+  const auth = await resolveAuthContext(options);
+  if (!auth.token) {
+    throw new Error("请通过 --token 传入开发者 token；该 token 仅用于校验，不会落盘。");
   }
+  await getDeveloperProfile(auth);
   const config = await saveStudioConfig({
-    token: options.token,
-    tenantId: options.tenantId,
-    apiBase: options.apiBase,
+    tenantId: auth.tenantId,
+    apiBase: auth.apiBase,
   });
-  console.log(`已保存 Studio 登录配置：tenantId=${config.tenantId || "未设置"}`);
+  console.log(
+    `已验证并保存 Studio 登录配置：tenantId=${config.tenantId || "未设置"}（token 不落盘）`,
+  );
 }
 
 async function authStatus(options) {
   const auth = await resolveAuthContext(options);
-  const config = await loadStudioConfig();
+  const hasEnvToken = Boolean(process.env.LIME_AGENT_APP_STUDIO_TOKEN);
   if (!auth.token || !auth.tenantId) {
     return printJson({
       authenticated: false,
       tenantId: auth.tenantId,
       apiBase: auth.apiBase,
-      hasLocalToken: Boolean(config.token),
-      message: "缺少 token 或 tenantId，无法查询云端开发者认证状态。",
+      hasLocalToken: hasEnvToken,
+      hasEnvToken,
+      message: "缺少可用 token 或 tenantId，无法查询云端开发者认证状态。",
     });
   }
   const profile = await getDeveloperProfile(auth);
@@ -86,7 +90,7 @@ function printHelp() {
   console.log(`Lime Agent App Studio
 
 Usage:
-  lime-agent-app-studio auth login --tenant-id <id> --token <token> [--api-base <url>]
+  lime-agent-app-studio auth login --tenant-id <id> --token <token> [--api-base <url>]  # token 仅用于校验
   lime-agent-app-studio auth status --tenant-id <id>
   lime-agent-app-studio project inspect --app-dir <path>
   lime-agent-app-studio package --app-dir <path> [--out-dir <path>] [--include-node-modules]

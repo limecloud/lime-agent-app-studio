@@ -4,6 +4,7 @@ capabilities:
     features:
       - pages
       - developer-console
+      - theme
     routes:
       - path: /dashboard
         component: ./dist/ui/index.html
@@ -20,3 +21,6 @@ capabilities:
   lime.evidence:
     required: false
     reason: 记录 dry-run 与发布审计证据。
+  lime.cloudSession:
+    required: true
+    reason: 读取宿主当前会话快照，并在正式发布前通过显式能力 just-in-time 获取当前 access token；不读取快照中的 bearer token，也不保存 token。

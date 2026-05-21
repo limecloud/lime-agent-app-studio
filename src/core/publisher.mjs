@@ -38,7 +38,7 @@ export async function publishProject(options = {}) {
   if (options.dryRun || !options.publish) {
     return { mode: "dry-run", plan };
   }
-  if (!options.token) throw new Error("缺少开发者 token，请先执行 auth login 或设置 LIME_AGENT_APP_STUDIO_TOKEN");
+  if (!options.token) throw new Error("缺少开发者 token，请先通过宿主会话、--token 或设置 LIME_AGENT_APP_STUDIO_TOKEN");
   if (!options.tenantId) throw new Error("缺少 tenantId，请传入 --tenant-id 或设置 LIMECORE_TENANT_ID");
 
   const profile = await getDeveloperProfile(options);

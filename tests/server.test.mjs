@@ -61,7 +61,9 @@ test("Studio server 暴露 Lime runtime 健康检查与页面路由回退", asyn
       headers: { Accept: "text/html" },
     });
     assert.equal(dashboard.status, 200);
-    assert.match(await dashboard.text(), /Lime Agent App Studio/);
+    const html = await dashboard.text();
+    assert.match(html, /<title>发布应用<\/title>/);
+    assert.match(html, /<h1 id="pageTitle">发布应用<\/h1>/);
   });
 });
 

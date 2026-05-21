@@ -1,8 +1,8 @@
 ---
 manifestVersion: 0.7.0
 name: lime-agent-app-studio
-displayName: Lime Agent App Studio
-version: 0.1.3
+displayName: 发布应用
+version: 0.2.0
 status: preview
 appType: developer-tool
 description: 面向已认证开发者的 Agent App 可视化发布工作台和 npm CLI 入口。
@@ -17,6 +17,7 @@ requires:
     - lime.files
     - lime.agent
     - lime.evidence
+    - lime.cloudSession
 categories:
   - developer
   - developer_only
@@ -55,9 +56,11 @@ support:
 license: Apache-2.0
 ---
 
-# Lime Agent App Studio
+# 发布应用
 
-Lime Agent App Studio 是开发者工具入口。已认证开发者可以在 Lime 应用中心安装它，并通过可视化工作台或 npm CLI 将 Agent App 打包、Dry-run 和发布到 LimeCore 云端。
+发布应用是 Lime 提供给已认证开发者的 Agent App 发布入口。开发者可以在 Lime 应用中心安装它，并通过可视化工作台或 npm CLI 将 Agent App 打包、Dry-run 和发布到 LimeCore 云端。
+
+当 Studio 嵌入 Lime 时，发布认证会通过 `lime.cloudSession` 从宿主即时获取当前会话 token；CLI 或脱离宿主场景可以继续使用环境变量或命令行临时 token，但不会把 token 写入本机配置。
 
 ## CLI
 

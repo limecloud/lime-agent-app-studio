@@ -3,6 +3,7 @@ const defaultApiBase = "https://lime-api.limeai.run/api";
 const state = {
   inspection: null,
   generated: buildGeneratedAssets({}),
+  hostCloud: null,
 };
 
 const output = document.querySelector("#output");
@@ -10,37 +11,61 @@ const statusEl = document.querySelector("#status");
 const appDirInput = document.querySelector("#appDir");
 const appIdInput = document.querySelector("#appId");
 const publishBtn = document.querySelector("#publishBtn");
-const dryRunBtn = document.querySelector("#dryRunBtn");
 const inspectBtn = document.querySelector("#inspectBtn");
 const logPanel = document.querySelector("#logPanel");
 const advancedPanel = document.querySelector(".advanced-panel");
-const stageSelect = document.querySelector("#stageSelect");
-const stageGenerate = document.querySelector("#stageGenerate");
-const stageUpload = document.querySelector("#stageUpload");
+const resultBanner = document.querySelector("#resultBanner");
+const resultTitle = document.querySelector("#resultTitle");
+const resultCopy = document.querySelector("#resultCopy");
+const themeButtons = Array.from(document.querySelectorAll("[data-theme-option]"));
 const limeAppSdkImport = "@lime/app-sdk";
 const hostBridgeProtocol = "lime.agentApp.bridge";
 const hostBridgeVersion = 1;
 const appId = "lime-agent-app-studio";
 const entryKey = "dashboard";
+const themeStorageKey = "lime-agent-app-studio:theme-mode";
 let limeAppSdkPromise = null;
+let selectedThemeMode = readStoredThemeMode();
+let hostThemeSyncStarted = false;
+const systemThemeMedia = window.matchMedia?.("(prefers-color-scheme: dark)");
+
+applyThemeMode();
+systemThemeMedia?.addEventListener?.("change", () => {
+  if (selectedThemeMode === "system") applyThemeMode();
+});
 
 function fieldValue(id) {
   return document.querySelector(`#${id}`).value.trim();
 }
 
-function values() {
-  return Object.fromEntries(
+function buildExplicitValues() {
+  const explicitValues = Object.fromEntries(
     fields
       .map((id) => [id, fieldValue(id)])
       .filter(([, value]) => value),
   );
+  return explicitValues;
+}
+
+function values() {
+  return {
+    ...buildExplicitValues(),
+    ...hostCloudAuthValues(),
+  };
+}
+
+async function resolvePublishValues(options = {}) {
+  return {
+    ...values(),
+    ...(await resolveHostCloudSessionValues(options)),
+  };
 }
 
 function setBusy(label = "执行中") {
   setStatus(label, "idle");
   output.textContent = "请稍候...";
+  setResultBanner(null);
   publishBtn.disabled = true;
-  dryRunBtn.disabled = true;
   inspectBtn.disabled = true;
 }
 
@@ -54,12 +79,26 @@ function setOutput(lines, options = {}) {
   if (Object.hasOwn(options, "open")) logPanel.open = Boolean(options.open);
 }
 
+function setResultBanner(result) {
+  if (!result) {
+    resultBanner.hidden = true;
+    resultBanner.dataset.tone = "";
+    resultTitle.textContent = "";
+    resultCopy.textContent = "";
+    return;
+  }
+  resultBanner.hidden = false;
+  resultBanner.dataset.tone = result.tone || "info";
+  resultTitle.textContent = result.title;
+  resultCopy.textContent = result.copy || "";
+}
+
 function render() {
   const inspection = state.inspection;
   const generated = state.generated;
   const hasDir = Boolean(fieldValue("appDir"));
   const publishable = Boolean(inspection?.publishable);
-  const categoryLabels = inspection ? displayCategoryLabels(generated.categories) : ["自动分类"];
+  const categoryLabels = inspection ? displayCategoryLabels(generated.categories) : [];
   const appName = inspection ? generated.name : "等待选择目录";
   const iconLabel = inspection ? generated.iconLabel : "App";
   const metaLabels = inspection
@@ -70,9 +109,7 @@ function render() {
   document.querySelector("#appTitle").textContent = appName;
   document.querySelector("#appMeta").textContent = inspection
     ? metaLabels.join(" · ")
-    : "图标、类型和分类会自动生成。";
-  document.querySelector("#autoIconState").textContent = inspection ? `${generated.iconLabel} 图标` : "自动生成";
-  document.querySelector("#autoType").textContent = inspection ? generated.typeLabel : "自动推荐";
+    : "选择目录后显示应用名称和类型。";
   document.querySelector("#iconPreview").textContent = iconLabel;
   document.querySelector("#iconPreview").style.setProperty("--icon-bg", generated.iconBackground);
   document.querySelector("#categoryChips").replaceChildren(
@@ -85,63 +122,236 @@ function render() {
 
   inspectBtn.disabled = !hasDir;
   publishBtn.disabled = !publishable;
-  dryRunBtn.disabled = !publishable;
-  updateStages({ hasDir, inspection, publishable });
 
   document.querySelector("#activityText").textContent = state.manualDirectoryHint
     ? state.manualDirectoryHint
     : inspection
     ? publishable
-      ? "已自动生成图标、类型和分类。现在可以一键上传或更新到云端。"
-      : "目录已识别，但还有阻塞项。展开运行明细查看处理方式。"
-    : "等待选择目录。选好后会自动生成图标、类型和分类。";
+      ? "目录已通过检查，可以发布。"
+      : "目录已识别，但还不能发布。"
+    : "先选择应用目录。";
   document.querySelector("#nextStepTitle").textContent = state.manualDirectoryHint
     ? "粘贴目录后重新识别"
     : inspection
     ? publishable
-      ? "一键发布到云端"
+      ? "准备发布"
       : "先处理阻塞项"
     : "选择目录后即可发布";
   document.querySelector("#nextStepCopy").textContent = state.manualDirectoryHint
-    ? "如果系统目录窗口没有弹出，直接把应用目录路径粘贴到高级设置里的“手动目录”。"
+    ? "在手动设置里粘贴目录路径，再重新识别。"
     : inspection
     ? publishable
-      ? "默认使用本机开发者认证配置。需要改租户、Token 或通道时再展开高级设置。"
-      : "缺少必需文件或发布信息时不会上传，按运行明细处理后重新识别。"
-    : "Studio 默认读取本机开发者认证；需要覆盖时再展开高级设置。";
+      ? "发布会使用 Lime 当前登录状态。"
+      : "查看诊断详情，修复后重新识别。"
+    : "发布会使用 Lime 当前登录状态。";
 }
 
-function updateStages({ hasDir, inspection, publishable }) {
-  const stages = [stageSelect, stageGenerate, stageUpload];
-  for (const item of stages) item.className = "stage";
-
-  if (!hasDir && !inspection) {
-    stageSelect.classList.add("active");
-    return;
+async function post(path, body, options = {}) {
+  let response;
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: options.signal,
+    });
+  } catch (cause) {
+    const error = new Error(formatNetworkErrorMessage(cause));
+    error.cause = cause;
+    error.network = true;
+    throw error;
   }
-  stageSelect.classList.add("done");
-  if (!publishable) {
-    stageGenerate.classList.add("active");
-    return;
+  let payload = null;
+  let parseError = null;
+  try {
+    payload = await response.json();
+  } catch (cause) {
+    parseError = cause;
   }
-  stageGenerate.classList.add("done");
-  stageUpload.classList.add("active");
-}
-
-async function post(path, body) {
-  const response = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const payload = await response.json();
   if (!response.ok || payload?.error) {
-    const message = payload?.error || `HTTP ${response.status}`;
+    const message = payload?.error || (parseError ? `HTTP ${response.status} (响应解析失败)` : `HTTP ${response.status}`);
     const error = new Error(message);
     error.payload = payload;
+    error.status = response.status;
     throw error;
   }
   return payload;
+}
+
+function formatNetworkErrorMessage(cause) {
+  const original = cause?.message || String(cause || "");
+  const isLoadFailed = /load failed/i.test(original) || /failed to fetch/i.test(original);
+  if (!isLoadFailed) return original || "请求 Studio 本地服务失败";
+  return [
+    "Studio 本地服务暂时不可达。",
+    "可能原因：发布耗时超过浏览器请求上限；Studio runtime 已退出；端口被其他进程占用。",
+    "处理方式：稍候再试；如多次失败，请到 Lime 应用中心 → 重新启动发布应用。",
+  ].join("\n");
+}
+
+function hostCloudAuthValues() {
+  const cloud = state.hostCloud;
+  if (!cloud || !cloud.tenantId) {
+    return {};
+  }
+  return {
+    apiBase: cloud.controlPlaneBaseUrl || defaultApiBase,
+    tenantId: cloud.tenantId,
+  };
+}
+
+async function resolveHostCloudSessionValues(options = {}) {
+  if (!isEmbeddedRuntime()) {
+    return {};
+  }
+  const sdk = await loadLimeAppSdk();
+  if (!sdk?.createLimeHostBridgeCapabilityInvoker) {
+    return {};
+  }
+  const invoker = sdk.createLimeHostBridgeCapabilityInvoker({
+    appId,
+    entryKey,
+    requestIdPrefix: "studio-host-cloud",
+    requestTimeoutMs: 5 * 60 * 1000,
+    onSnapshot: updateHostCloudFromSnapshot,
+  });
+  try {
+    await syncHostCloudSnapshot(invoker);
+    return await ensureHostCloudAccessToken(invoker, options);
+  } finally {
+    invoker.dispose?.();
+  }
+}
+
+async function syncHostCloudSnapshot(invoker) {
+  try {
+    const response = await invoker.getHostSnapshot?.();
+    updateHostCloudFromSnapshot(response?.value ?? response);
+  } catch {
+    // Host snapshot is best-effort; publish can still fall back to explicit auth.
+  }
+}
+
+async function ensureHostCloudAccessToken(invoker, options = {}) {
+  const request = buildHostCloudSessionRequest({
+    capability: "lime.cloudSession",
+    method: "getAccessToken",
+  });
+  if (options.forceLogin) {
+    await requestHostCloudLogin(invoker, { force: true });
+  }
+  const response = await invoker.call(request);
+  if (response.ok) {
+    return normalizeHostCloudSessionValue(response.value);
+  }
+
+  await requestHostCloudLogin(invoker, { force: true });
+
+  const retryResponse = await invoker.call(request);
+  if (!retryResponse.ok) {
+    throw new Error(readCapabilityErrorMessage(retryResponse));
+  }
+  return normalizeHostCloudSessionValue(retryResponse.value);
+}
+
+async function requestHostCloudLogin(invoker, input = {}) {
+  const loginResponse = await invoker.call(
+    buildHostCloudSessionRequest({
+      capability: "lime.cloudSession",
+      method: "requestLogin",
+      input,
+    }),
+  );
+  if (!loginResponse.ok) {
+    throw new Error(readCapabilityErrorMessage(loginResponse));
+  }
+  return loginResponse.value;
+}
+
+function buildHostCloudSessionRequest({ capability, method, input }) {
+  return {
+    capability,
+    method,
+    ...(input && Object.keys(input).length ? { args: input } : {}),
+  };
+}
+
+function normalizeHostCloudSessionValue(value) {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+  const token = firstText(value.accessToken, value.access_token, value.token);
+  const tenantId = firstText(value.tenantId, value.tenant_id);
+  const controlPlaneBaseUrl = firstText(
+    value.controlPlaneBaseUrl,
+    value.control_plane_base_url,
+    value.apiBase,
+    value.api_base,
+  );
+  if (!token || !tenantId) {
+    return {};
+  }
+  return {
+    token,
+    tenantId,
+    apiBase: controlPlaneBaseUrl || hostCloudAuthValues().apiBase || defaultApiBase,
+  };
+}
+
+function readCapabilityErrorMessage(response) {
+  if (response?.error?.message) return response.error.message;
+  if (typeof response?.error === "string") return response.error;
+  return "Host cloud session capability failed.";
+}
+
+function normalizeHostCloud(value) {
+  if (!value || typeof value !== "object") return null;
+  const cloud = value.cloud && typeof value.cloud === "object" ? value.cloud : value;
+  const tenantId = firstText(cloud.tenantId, cloud.tenant_id);
+  const controlPlaneBaseUrl = firstText(
+    cloud.controlPlaneBaseUrl,
+    cloud.control_plane_base_url,
+    cloud.apiBase,
+    cloud.api_base,
+  );
+  if (!tenantId && !controlPlaneBaseUrl && cloud.hasSession === undefined) return null;
+  return {
+    tenantId,
+    controlPlaneBaseUrl,
+    hasSession: Boolean(cloud.hasSession),
+  };
+}
+
+function updateHostCloudFromSnapshot(snapshot) {
+  const cloud = normalizeHostCloud(snapshot);
+  if (!cloud) return false;
+  state.hostCloud = cloud;
+  return true;
+}
+
+function readStoredThemeMode() {
+  const value = window.localStorage?.getItem(themeStorageKey);
+  return ["system", "light", "dark"].includes(value) ? value : "system";
+}
+
+function setThemeMode(mode) {
+  selectedThemeMode = ["system", "light", "dark"].includes(mode) ? mode : "system";
+  window.localStorage?.setItem(themeStorageKey, selectedThemeMode);
+  applyThemeMode();
+}
+
+function applyThemeMode() {
+  const root = document.documentElement;
+  const effectiveMode =
+    selectedThemeMode === "system"
+      ? root.dataset.limeThemeEffective || (systemThemeMedia?.matches ? "dark" : "light")
+      : selectedThemeMode;
+  root.dataset.studioTheme = selectedThemeMode;
+  root.dataset.limeThemeEffective = effectiveMode;
+  root.style.colorScheme = effectiveMode === "dark" ? "dark" : "light";
+  for (const button of themeButtons) {
+    button.setAttribute("aria-pressed", String(button.dataset.themeOption === selectedThemeMode));
+  }
 }
 
 async function inspectCurrent() {
@@ -151,6 +361,7 @@ async function inspectCurrent() {
     state.generated = buildGeneratedAssets({});
     setStatus("等待目录", "idle");
     setOutput("请先选择应用目录。", { open: false });
+    setResultBanner(null);
     render();
     return;
   }
@@ -165,11 +376,25 @@ async function inspectCurrent() {
       appIdInput.value = payload.appId;
     }
     setStatus(payload.publishable ? "可以发布" : "需要处理", payload.publishable ? "ok" : "warn");
+    setResultBanner(
+      payload.publishable
+        ? {
+            tone: "ok",
+            title: "已识别",
+            copy: `${state.generated.name} 可以发布。`,
+          }
+        : {
+            tone: "warn",
+            title: "需要处理",
+            copy: "修复诊断详情里的阻塞项后再发布。",
+          },
+    );
     setOutput(formatInspectionResult(payload, state.generated), { open: !payload.publishable });
   } catch (error) {
     state.inspection = null;
     state.generated = buildGeneratedAssets({});
     setStatus("识别失败", "error");
+    setResultBanner({ tone: "error", title: "识别失败", copy: "查看诊断详情后重试。" });
     setOutput(formatError(error), { open: true });
   } finally {
     render();
@@ -184,9 +409,10 @@ async function selectDirectory() {
     const payload = await selectDirectoryWithBestAvailablePicker();
     if (payload.cancelled || !payload.path) {
       setStatus("已取消", "idle");
+      setResultBanner(null);
       setOutput([
         "没有选择目录。",
-        payload.message ? `系统提示：${payload.message}` : "你也可以展开高级设置，手动粘贴应用目录路径。",
+        payload.message ? `系统提示：${payload.message}` : "也可以展开手动设置，粘贴应用目录路径。",
       ], { open: Boolean(payload.message) });
       render();
       return;
@@ -274,6 +500,40 @@ async function loadLimeAppSdk() {
   return limeAppSdkPromise;
 }
 
+async function syncHostCloudContext() {
+  if (!isEmbeddedRuntime()) return;
+  const sdk = await loadLimeAppSdk();
+  if (!sdk?.createLimeHostBridgeCapabilityInvoker) return;
+  void startHostThemeSync(sdk);
+  const invoker = sdk.createLimeHostBridgeCapabilityInvoker({
+    appId,
+    entryKey,
+    requestIdPrefix: "studio-host-cloud",
+    requestTimeoutMs: 3000,
+    onSnapshot: updateHostCloudFromSnapshot,
+  });
+  try {
+    const response = await invoker.getHostSnapshot?.();
+    updateHostCloudFromSnapshot(response?.value ?? response);
+  } catch {
+    // 没有 Host snapshot 时继续使用本机 CLI 配置或高级设置里的临时凭证。
+  } finally {
+    invoker.dispose?.();
+  }
+}
+
+async function startHostThemeSync(sdk) {
+  if (hostThemeSyncStarted || !sdk?.syncLimeHostTheme) return;
+  hostThemeSyncStarted = true;
+  const invoker = sdk.createLimeHostBridgeCapabilityInvoker({
+    appId,
+    entryKey,
+    requestIdPrefix: "studio-theme",
+    requestTimeoutMs: 3000,
+  });
+  sdk.syncLimeHostTheme(invoker);
+}
+
 function selectDirectoryFromLegacyHostBridge() {
   return invokeLegacyHostBridgeCapability(
     "selectDirectory",
@@ -356,44 +616,71 @@ function openManualDirectoryFallback() {
   state.manualDirectoryHint = "系统目录选择器暂不可用。已打开手动目录输入，粘贴目录后点击“重新识别”。";
   advancedPanel.open = true;
   setStatus("需要手动路径", "warn");
+  setResultBanner({ tone: "warn", title: "需要手动选择", copy: "在手动设置里粘贴目录路径。" });
   setOutput(
     [
       "已切换到手动目录模式。",
       "1. 把本地应用目录路径粘贴到“手动目录”。",
       "2. 点击“重新识别”。",
-      "3. 识别通过后再一键上传或更新到云端。",
+      "3. 识别通过后再发布到云端。",
     ],
     { open: false },
   );
   window.setTimeout(() => appDirInput.focus(), 0);
 }
 
-async function dryRun() {
-  setBusy("预演中");
+async function publish() {
+  setBusy("发布中");
   try {
-    const payload = await post("/api/publish", { ...values(), dryRun: true });
-    setStatus("预演完成", "ok");
-    setOutput(formatPublishResult(payload), { open: true });
+    const payload = await post("/api/publish", { ...(await resolvePublishValues()), publish: true });
+    setStatus("已发布", "ok");
+    setResultBanner(buildPublishSuccessBanner(payload));
+    setOutput(formatPublishResult(payload), { open: false });
   } catch (error) {
-    setStatus("预演失败", "error");
+    if (isHostCloudAuthRefreshableError(error)) {
+      try {
+        setBusy("重新登录中");
+        const payload = await post("/api/publish", {
+          ...(await resolvePublishValues({ forceLogin: true })),
+          publish: true,
+        });
+        setStatus("已发布", "ok");
+        setResultBanner(buildPublishSuccessBanner(payload));
+        setOutput(formatPublishResult(payload), { open: false });
+        return;
+      } catch (retryError) {
+        setStatus("发布失败", "error");
+        setResultBanner({ tone: "error", title: "发布失败", copy: "查看诊断详情后重试。" });
+        setOutput(formatError(retryError), { open: true });
+        return;
+      }
+    }
+    setStatus("发布失败", "error");
+    setResultBanner({ tone: "error", title: "发布失败", copy: "查看诊断详情后重试。" });
     setOutput(formatError(error), { open: true });
   } finally {
     render();
   }
 }
 
-async function publish() {
-  setBusy("上传中");
-  try {
-    const payload = await post("/api/publish", { ...values(), publish: true });
-    setStatus("上传完成", "ok");
-    setOutput(formatPublishResult(payload), { open: true });
-  } catch (error) {
-    setStatus("上传失败", "error");
-    setOutput(formatError(error), { open: true });
-  } finally {
-    render();
-  }
+function buildPublishSuccessBanner(payload) {
+  const appName = payload.plan?.generated?.displayName || payload.plan?.appId || state.generated.name;
+  const version = payload.publishedVersion || payload.release?.version || payload.plan?.version;
+  return {
+    tone: "ok",
+    title: "已发布",
+    copy: version ? `${appName} ${version} 已更新到云端。` : `${appName} 已更新到云端。`,
+  };
+}
+
+function isHostCloudAuthRefreshableError(error) {
+  if (!isEmbeddedRuntime()) return false;
+  const message = error?.message || String(error || "");
+  return (
+    error?.status === 401 ||
+    /\b401\b/.test(message) ||
+    /无效的认证 token|当前 token 不是终端用户会话|session token 缺少 tenantId|token 与当前租户不匹配/i.test(message)
+  );
 }
 
 function buildGeneratedAssets(inspection = {}) {
@@ -516,11 +803,23 @@ function formatPublishResult(payload) {
 
 function formatError(error) {
   const message = error?.message || String(error);
+  if (error?.network) {
+    return message;
+  }
+  if (/load failed/i.test(message) || /failed to fetch/i.test(message)) {
+    return [
+      message,
+      "",
+      "Studio 本地服务暂时不可达。请稍候再试；如多次失败，到 Lime 应用中心 → 重新启动发布应用。",
+    ];
+  }
   if (message.includes("token") || message.includes("tenantId") || message.includes("开发者认证")) {
     return [
       message,
       "",
-      "处理方式：先在用户中心完成开发者认证；本机可通过 CLI 登录保存认证配置，或在高级设置中临时填写 Tenant ID 和开发者 Token。",
+      state.hostCloud?.hasSession
+        ? "当前已同步宿主会话；Studio 会通过 `lime.cloudSession` 即时取 token。如果仍失败，请重新触发宿主登录或检查会话是否过期。"
+        : "处理方式：先在 Lime 中完成登录，或在 CLI / 脱离宿主场景提供 Tenant ID 与 `LIME_AGENT_APP_STUDIO_TOKEN`。Studio 不会把 token 落盘。",
     ];
   }
   return message;
@@ -538,9 +837,12 @@ function unique(values) {
 }
 
 document.querySelector("#apiBase").placeholder = defaultApiBase;
+void syncHostCloudContext();
+for (const button of themeButtons) {
+  button.addEventListener("click", () => setThemeMode(button.dataset.themeOption));
+}
 document.querySelector("#selectDirBtn").addEventListener("click", selectDirectory);
 inspectBtn.addEventListener("click", inspectCurrent);
-dryRunBtn.addEventListener("click", dryRun);
 publishBtn.addEventListener("click", publish);
 appDirInput.addEventListener("change", () => {
   state.manualDirectoryHint = null;
