@@ -1,20 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  buildConflictResolutionVersion,
+  createReleaseWithDevelopmentVersionRetry,
   isReleaseAlreadyExistsError,
 } from "../src/core/publisher.mjs";
-
-test("重复 release 冲突会生成可追踪的开发构建版本", () => {
-  assert.equal(
-    buildConflictResolutionVersion("0.1.7", new Date("2026-05-18T17:01:23.456Z")),
-    "0.1.7+studio.20260518170123456",
-  );
-  assert.equal(
-    buildConflictResolutionVersion("0.1.7+old", new Date("2026-05-18T17:01:23.456Z")),
-    "0.1.7+studio.20260518170123456",
-  );
-});
 
 test("识别 LimeCore release 已存在错误", () => {
   const badRequest = new Error("400 agent app release already exists");
@@ -28,4 +17,24 @@ test("识别 LimeCore release 已存在错误", () => {
   const unrelated = new Error("400 validation failed");
   unrelated.status = 400;
   assert.equal(isReleaseAlreadyExistsError(unrelated), false);
+});
+
+test("重复 release 冲突要求先更新包内 manifest version", async () => {
+  const apiError = new Error("409 agent app release already exists");
+  apiError.status = 409;
+
+  await assert.rejects(
+    createReleaseWithDevelopmentVersionRetry({
+      options: {
+        createDeveloperAgentAppRelease: async () => {
+          throw apiError;
+        },
+      },
+      appId: "removebg",
+      payload: {
+        version: "0.1.5",
+      },
+    }),
+    /请先更新 APP\.md 或 app\.manifest\.json 中的 version/,
+  );
 });

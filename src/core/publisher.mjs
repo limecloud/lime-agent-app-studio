@@ -88,20 +88,20 @@ export async function publishProject(options = {}) {
   };
 }
 
-async function createReleaseWithDevelopmentVersionRetry({ options, appId, payload }) {
+export async function createReleaseWithDevelopmentVersionRetry({ options, appId, payload }) {
+  const createRelease = options.createDeveloperAgentAppRelease || createDeveloperAgentAppRelease;
   try {
-    const release = await createDeveloperAgentAppRelease({ ...options, appId, payload });
+    const release = await createRelease({ ...options, appId, payload });
     return { release, versionConflictResolved: false, originalVersion: payload.version };
   } catch (error) {
-    if (options.autoVersionOnConflict === false || !isReleaseAlreadyExistsError(error)) {
+    if (!isReleaseAlreadyExistsError(error)) {
       throw error;
     }
-    const retryPayload = {
-      ...payload,
-      version: buildConflictResolutionVersion(payload.version, options.now),
-    };
-    const release = await createDeveloperAgentAppRelease({ ...options, appId, payload: retryPayload });
-    return { release, versionConflictResolved: true, originalVersion: payload.version };
+    const message = `版本 ${payload.version} 已存在。请先更新 APP.md 或 app.manifest.json 中的 version 后重新发布，避免 release descriptor 与安装包清单版本不一致。`;
+    const conflict = new Error(message);
+    conflict.status = error.status || 409;
+    conflict.cause = error;
+    throw conflict;
   }
 }
 
@@ -111,13 +111,4 @@ export function isReleaseAlreadyExistsError(error) {
     (error?.status === 400 || error?.status === 409 || /\b400\b|\b409\b/.test(message)) &&
     /agent app release already exists/i.test(message)
   );
-}
-
-export function buildConflictResolutionVersion(version, now = new Date()) {
-  const baseVersion = String(version || "0.0.0").trim().replace(/\+.*/, "") || "0.0.0";
-  const date = now instanceof Date ? now : new Date(now);
-  const stamp = Number.isNaN(date.getTime())
-    ? String(Date.now())
-    : date.toISOString().replace(/\D/g, "").slice(0, 17);
-  return `${baseVersion}+studio.${stamp}`;
 }

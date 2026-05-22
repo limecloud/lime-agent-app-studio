@@ -2,7 +2,7 @@
 manifestVersion: 0.7.0
 name: lime-agent-app-studio
 displayName: 发布应用
-version: 0.2.0
+version: 0.2.1
 status: preview
 appType: developer-tool
 description: 面向已认证开发者的 Agent App 可视化发布工作台和 npm CLI 入口。
