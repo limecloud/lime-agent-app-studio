@@ -17,10 +17,13 @@ capabilities:
     reason: 选择本地 Agent App 目录用于诊断和打包。
   lime.agent:
     required: false
-    reason: 后续版本用于生成发布前检查和修复建议。
+    reason: 通过宿主 Agent 任务生成应用中心 Logo、发布前检查和修复建议；Studio 只消费结果并写入本地 App 包资产。
   lime.evidence:
     required: false
     reason: 记录 dry-run 与发布审计证据。
   lime.cloudSession:
     required: true
     reason: 读取宿主当前会话快照，并在正式发布前通过显式能力 just-in-time 获取当前 access token；不读取快照中的 bearer token，也不保存 token。
+  lime.storage:
+    required: false
+    reason: Host Bridge SDK 在宿主内需要应用级临时状态上下文来完成任务订阅；Logo 工坊生成结果仍写入目标 App 目录，不把图片内容长期存入宿主 storage。

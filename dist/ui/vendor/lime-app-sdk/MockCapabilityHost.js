@@ -1,9 +1,9 @@
-var I = Object.defineProperty;
-var v = (i, e, t) => e in i ? I(i, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : i[e] = t;
-var d = (i, e, t) => v(i, typeof e != "symbol" ? e + "" : e, t);
-import { AgentAppCapabilityError as o } from "./capabilityErrors.js";
-import { buildRetryAgentAppTaskRecord as A, appendAgentAppTaskEvent as y, buildAgentAppTaskRecord as m } from "./agentTaskRuntime.js";
-import { buildAgentAppProvenance as g } from "./provenance.js";
+var f = Object.defineProperty;
+var I = (i, e, t) => e in i ? f(i, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : i[e] = t;
+var r = (i, e, t) => I(i, typeof e != "symbol" ? e + "" : e, t);
+import { AgentAppCapabilityError as c } from "./capabilityErrors.js";
+import { buildRetryAgentAppTaskRecord as v, appendAgentAppTaskEvent as u, buildAgentAppTaskRecord as A } from "./agentTaskRuntime.js";
+import { buildAgentAppProvenance as y } from "./provenance.js";
 import { matchesAgentAppProvenanceQuery as l } from "./provenanceQuery.js";
 function h(i, e) {
   return {
@@ -14,38 +14,35 @@ function h(i, e) {
     reason: e
   };
 }
-function w(i) {
+function g(i) {
   return {
     ...i,
     exists: !0
   };
 }
-function b(i) {
+function m(i) {
   return {
     ...i,
     exists: !0,
     safeToDelete: !1
   };
 }
-function k(i) {
-  return typeof i == "string" ? i : i.taskId;
-}
-class R {
+class $ {
   constructor(e) {
-    d(this, "preview");
-    d(this, "mockSdkEnabled");
-    d(this, "now");
-    d(this, "storageEntries", /* @__PURE__ */ new Map());
-    d(this, "artifacts", []);
-    d(this, "evidence", []);
-    d(this, "tasks", []);
-    d(this, "runCounter", 0);
-    d(this, "taskCounter", 0);
+    r(this, "preview");
+    r(this, "mockSdkEnabled");
+    r(this, "now");
+    r(this, "storageEntries", /* @__PURE__ */ new Map());
+    r(this, "artifacts", []);
+    r(this, "evidence", []);
+    r(this, "tasks", []);
+    r(this, "runCounter", 0);
+    r(this, "taskCounter", 0);
     this.preview = e.preview, this.mockSdkEnabled = e.mockSdkEnabled ?? !0, this.now = e.now ?? (() => (/* @__PURE__ */ new Date()).toISOString());
   }
   createSdkContext(e, t) {
     this.assertMockSdkEnabled();
-    const s = this.findEntry(e), a = g({
+    const s = this.findEntry(e), a = y({
       preview: this.preview,
       entryKey: e,
       runId: t
@@ -64,11 +61,11 @@ class R {
     this.assertMockSdkEnabled();
     const t = this.findEntry(e);
     this.assertRunnable(t);
-    const s = this.nextRunId(e), a = this.now(), n = g({
+    const s = this.nextRunId(e), a = this.now(), n = y({
       preview: this.preview,
       entryKey: e,
       runId: s
-    }), c = this.createSdkContext(e, s), r = {
+    }), o = this.createSdkContext(e, s), d = {
       runId: s,
       appId: this.preview.identity.appId,
       entryKey: e,
@@ -79,13 +76,13 @@ class R {
       storageKeys: [],
       taskIds: [],
       provenance: n
-    }, f = await c.storage.set(`runs/${s}`, {
+    }, w = await o.storage.set(`runs/${s}`, {
       entryKey: e,
       status: "running",
       title: t.title
     });
-    r.storageKeys.push(f.key);
-    const p = await c.artifacts.create({
+    d.storageKeys.push(w.key);
+    const p = await o.artifacts.create({
       kind: "mock_agent_app_artifact",
       title: `${t.title} · mock artifact`,
       content: {
@@ -95,22 +92,22 @@ class R {
         generatedBy: "MockCapabilityHost"
       }
     });
-    r.artifactIds.push(p.id);
-    const u = await c.evidence.record({
+    d.artifactIds.push(p.id);
+    const k = await o.evidence.record({
       kind: "mock_entry_run",
       message: `Mock entry ${t.key} generated artifact ${p.id}.`,
       refs: [p.id]
     });
-    return r.evidenceIds.push(u.id), r.status = "succeeded", r.finishedAt = this.now(), await c.storage.set(`runs/${s}`, {
+    return d.evidenceIds.push(k.id), d.status = "succeeded", d.finishedAt = this.now(), await o.storage.set(`runs/${s}`, {
       entryKey: e,
       status: "succeeded",
       title: t.title,
-      artifactIds: r.artifactIds,
-      evidenceIds: r.evidenceIds
+      artifactIds: d.artifactIds,
+      evidenceIds: d.evidenceIds
     }), {
-      run: r,
+      run: d,
       artifacts: [p],
-      evidence: [u],
+      evidence: [k],
       tasks: [],
       knowledge: []
     };
@@ -145,7 +142,7 @@ class R {
       ...e.cleanupPlan.readinessPaths,
       ...e.cleanupPlan.setupStatePaths,
       ...e.cleanupPlan.logPaths
-    ].map(w), s = [
+    ].map(g), s = [
       ...e.cleanupPlan.overlayRefs,
       ...e.cleanupPlan.storageNamespaces,
       ...e.cleanupPlan.artifactRefs,
@@ -168,9 +165,9 @@ class R {
       mode: e.deleteData ? "delete-data" : "keep-data",
       deletedTargets: [
         ...t,
-        ...e.deleteData ? s.map(w) : []
+        ...e.deleteData ? s.map(g) : []
       ],
-      retainedTargets: e.deleteData ? [] : s.map(b),
+      retainedTargets: e.deleteData ? [] : s.map(m),
       warnings: e.deleteData ? [] : [
         {
           code: "APP_DATA_RETAINED",
@@ -260,7 +257,7 @@ class R {
     return this.assertCapabilityEnabled("lime.agent", e.entryKey), {
       startTask: async (t) => {
         this.taskCounter += 1;
-        const s = m({
+        const s = A({
           taskId: `mock-task-${this.taskCounter}`,
           traceId: `mock-trace-${this.taskCounter}`,
           appId: this.preview.identity.appId,
@@ -273,50 +270,50 @@ class R {
         return this.tasks.push(s), s;
       },
       streamTask: async (t) => {
-        const s = k(t), a = this.tasks.find((n) => n.taskId === s);
-        return a ? [...a.events] : [];
+        const s = this.tasks.find((a) => a.taskId === t);
+        return s ? [...s.events] : [];
       },
-      getTask: async (t) => this.tasks.find((s) => s.taskId === k(t)) ?? null,
+      getTask: async (t) => this.tasks.find((s) => s.taskId === t) ?? null,
       cancelTask: async (t) => {
-        const s = k(t), a = this.tasks.findIndex((r) => r.taskId === s);
-        if (a < 0)
-          throw new o({
+        const s = this.tasks.findIndex((o) => o.taskId === t);
+        if (s < 0)
+          throw new c({
             code: "TASK_NOT_FOUND",
-            message: `Mock task ${s} was not found.`,
+            message: `Mock task ${t} was not found.`,
             appId: this.preview.identity.appId
           });
-        const n = this.now(), c = {
-          ...y(this.tasks[a], {
+        const a = this.now(), n = {
+          ...u(this.tasks[s], {
             type: "task:cancelled",
             status: "cancelled",
-            at: n,
+            at: a,
             message: "Mock task cancelled."
           }),
           status: "cancelled",
-          cancelledAt: n,
-          finishedAt: n
+          cancelledAt: a,
+          finishedAt: a
         };
-        return this.tasks[a] = c, c;
+        return this.tasks[s] = n, n;
       },
       retryTask: async (t) => {
-        const s = k(t), a = this.tasks.find((c) => c.taskId === s);
-        if (!a)
-          throw new o({
+        const s = this.tasks.find((n) => n.taskId === t);
+        if (!s)
+          throw new c({
             code: "TASK_NOT_FOUND",
-            message: `Mock task ${s} was not found.`,
+            message: `Mock task ${t} was not found.`,
             appId: this.preview.identity.appId,
             capability: "lime.agent"
           });
         this.taskCounter += 1;
-        const n = A({
+        const a = v({
           taskId: `mock-task-${this.taskCounter}`,
           traceId: `mock-trace-${this.taskCounter}`,
-          sourceTask: a,
+          sourceTask: s,
           provenance: e,
           now: this.now(),
           startMessage: "Mock task retried."
         });
-        return this.tasks.push(n), n;
+        return this.tasks.push(a), a;
       },
       submitHostResponse: async (t) => this.submitHostResponse(t, e),
       listTasks: async () => [...this.tasks]
@@ -325,7 +322,7 @@ class R {
   submitHostResponse(e, t) {
     const s = this.tasks.findIndex((n) => n.taskId === e.taskId);
     if (s < 0)
-      throw new o({
+      throw new c({
         code: "TASK_NOT_FOUND",
         message: `Mock task ${e.taskId} was not found.`,
         appId: this.preview.identity.appId,
@@ -333,7 +330,7 @@ class R {
         capability: "lime.agent"
       });
     const a = this.now();
-    return this.tasks[s] = y(this.tasks[s], {
+    return this.tasks[s] = u(this.tasks[s], {
       type: "task:progress",
       status: this.tasks[s].status,
       at: a,
@@ -352,7 +349,7 @@ class R {
   }
   assertMockSdkEnabled() {
     if (!this.mockSdkEnabled)
-      throw new o({
+      throw new c({
         code: "FEATURE_DISABLED",
         message: "Agent App mock SDK is disabled.",
         appId: this.preview.identity.appId
@@ -362,7 +359,7 @@ class R {
     if (!this.preview.readiness.supportedCapabilities.find(
       (a) => a.capability === e
     )?.enabled)
-      throw new o({
+      throw new c({
         code: "CAPABILITY_NOT_DECLARED",
         message: `${e} is not enabled for this Agent App preview.`,
         appId: this.preview.identity.appId,
@@ -375,7 +372,7 @@ class R {
       (s) => s.entryKey === e.key
     );
     if (!(this.preview.readiness.blockers.length === 0 && t?.status !== "blocked"))
-      throw new o({
+      throw new c({
         code: "READINESS_BLOCKED",
         message: `Entry ${e.key} is blocked by readiness checks.`,
         appId: this.preview.identity.appId,
@@ -388,7 +385,7 @@ class R {
     );
     if (t)
       return t;
-    throw new o({
+    throw new c({
       code: "ENTRY_NOT_FOUND",
       message: `Agent App entry ${e} was not found.`,
       appId: this.preview.identity.appId,
@@ -400,5 +397,5 @@ class R {
   }
 }
 export {
-  R as MockCapabilityHost
+  $ as MockCapabilityHost
 };

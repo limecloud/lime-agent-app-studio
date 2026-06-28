@@ -26,142 +26,6 @@ export interface RuntimePackageDeclaration {
         hash?: string;
     };
 }
-export type AgentAppInstallMode = "in_lime" | "standalone" | "runtime_backed" | "web_host";
-export type AgentAppInstallPlatform = "macos" | "windows" | "linux";
-export interface AgentAppInstallContract {
-    modes: AgentAppInstallMode[];
-    runtime?: {
-        minVersion?: string;
-        distribution?: {
-            standalone?: {
-                embedRuntime?: boolean;
-                shell?: string;
-            };
-            runtimeBacked?: {
-                requires?: string;
-                minVersion?: string;
-            };
-        };
-    };
-    standalone?: {
-        shell?: string;
-        bundleId?: string;
-        platforms?: AgentAppInstallPlatform[];
-        autoUpdate?: boolean;
-    };
-    runtimeBacked?: {
-        requires?: string;
-        minVersion?: string;
-    };
-    branding?: {
-        name?: string;
-        icon?: string;
-        windowTitle?: string;
-    };
-    compatibility?: Record<string, unknown>;
-}
-export interface NormalizedAgentAppInstallContract {
-    schemaVersion: 1;
-    supportedModes: AgentAppInstallMode[];
-    preferredMode: AgentAppInstallMode;
-    runtime: {
-        minVersion?: string;
-        standalone?: {
-            embedRuntime: boolean;
-            shell?: string;
-        };
-        runtimeBacked?: {
-            requires: string;
-            minVersion?: string;
-        };
-    };
-    standalone?: {
-        shell?: string;
-        bundleId?: string;
-        platforms: AgentAppInstallPlatform[];
-        autoUpdate: boolean;
-    };
-    runtimeBacked?: {
-        requires: string;
-        minVersion?: string;
-    };
-    branding: {
-        name: string;
-        icon?: string;
-        windowTitle: string;
-    };
-    compatibility: Record<string, unknown>;
-}
-export interface AgentAppInstallProjectionWarning {
-    code: "INSTALL_MODE_RESERVED" | "INSTALL_CONTRACT_DEFAULTED";
-    mode?: AgentAppInstallMode;
-    message: string;
-}
-export interface AgentAppInstallProjection {
-    supportedModes: AgentAppInstallMode[];
-    preferredMode: AgentAppInstallMode;
-    runtimeRequirements: Array<{
-        mode: AgentAppInstallMode;
-        minVersion?: string;
-        requires?: string;
-    }>;
-    shellRequirements: Array<{
-        mode: AgentAppInstallMode;
-        shell?: string;
-        bundleId?: string;
-        platforms?: AgentAppInstallPlatform[];
-    }>;
-    branding: NormalizedAgentAppInstallContract["branding"];
-    warnings: AgentAppInstallProjectionWarning[];
-}
-export interface AgentAppInstallSetupAction {
-    code: "select_install_mode" | "install_lime_runtime" | "upgrade_lime_runtime" | "use_lime_desktop";
-    label: string;
-    mode: AgentAppInstallMode;
-}
-export interface InstallModeReadiness {
-    mode: AgentAppInstallMode;
-    status: "ready" | "needs-setup" | "blocked";
-    blockers: ReadinessIssue[];
-    setupActions: AgentAppInstallSetupAction[];
-    evidencePolicy: "required" | "optional";
-    runtimeVersion?: string;
-}
-export interface AgentAppRuntimeProfileSummary {
-    installMode: AgentAppInstallMode;
-    shellKind: "desktop" | "app_shell" | "runtime_backed" | "web_host";
-    runtimeVersion?: string;
-    runtimeMinVersion?: string;
-    checkedAt: string;
-}
-export type LimeRuntimeShellKind = "desktop" | "app_shell" | "runtime_backed" | "web_host";
-export interface LimeRuntimeProfileCapability {
-    version: string;
-    available: boolean;
-    reason?: string;
-    implementation: CapabilityImplementation;
-}
-export interface LimeRuntimeProfile {
-    runtimeId: string;
-    runtimeVersion: string;
-    shellKind: LimeRuntimeShellKind;
-    installMode: AgentAppInstallMode;
-    capabilities: Record<string, LimeRuntimeProfileCapability>;
-    policy: {
-        permissionPrompt: "required" | "optional" | "disabled";
-        externalSideEffects: "deny" | "confirm" | "allow";
-        maxRisk: "low" | "medium" | "high";
-    };
-    storage: {
-        namespaceRoot: string;
-        quotaBytes?: number;
-        cleanupSupported: boolean;
-    };
-    evidence: {
-        recordRequired: boolean;
-        exportSupported: boolean;
-    };
-}
 export interface PermissionDeclaration {
     key: string;
     reason?: string;
@@ -294,7 +158,6 @@ export interface AppManifest {
     overlayTemplates?: OverlayTemplateDeclaration[];
     ui?: UiDeclaration;
     lifecycle?: LifecycleDeclaration;
-    install?: unknown;
     agentRuntime?: unknown;
     requirements?: unknown;
     boundary?: unknown;
@@ -340,7 +203,7 @@ export interface NormalizedAppEntry {
     enabledByDefault: boolean;
 }
 export interface NormalizedAppManifest {
-    manifestVersion: "0.2" | "0.3" | "0.5" | "0.6" | "0.7" | "0.8";
+    manifestVersion: "0.2" | "0.3" | "0.5" | "0.6" | "0.7";
     appId: string;
     displayName: string;
     version: string;
@@ -366,7 +229,6 @@ export interface NormalizedAppManifest {
     overlayTemplates: OverlayTemplateDeclaration[];
     ui?: UiDeclaration;
     lifecycle: LifecycleDeclaration;
-    install: NormalizedAgentAppInstallContract;
     agentRuntime?: unknown;
     requirements?: unknown;
     boundary?: unknown;
@@ -630,14 +492,13 @@ export interface AgentAppProjection {
     overlayTemplates: OverlayTemplateProjection[];
     ui?: UiDeclaration;
     lifecycle: LifecycleDeclaration;
-    install: AgentAppInstallProjection;
     readinessHints: ReadinessHint[];
     provenance: AgentAppProvenance;
 }
 export type ReadinessStatus = "ready" | "degraded" | "needs-setup" | "blocked";
 export type CapabilityImplementation = "none" | "mock" | "adapter" | "native";
 export interface ReadinessIssue {
-    code: "MANIFEST_VERSION_UNSUPPORTED" | "RUNTIME_TARGET_UNSUPPORTED" | "CAPABILITY_MISSING" | "CAPABILITY_VERSION_UNSUPPORTED" | "PERMISSION_REQUIRED" | "STORAGE_DECLARED_BUT_DISABLED" | "UI_RUNTIME_DISABLED" | "WORKER_RUNTIME_DISABLED" | "CLOUD_APP_DISABLED" | "CLOUD_LICENSE_UNAVAILABLE" | "CLOUD_REGISTRATION_REQUIRED" | "CLOUD_TOOL_UNAVAILABLE" | "CLOUD_POLICY_UNSUPPORTED" | "CLOUD_ENTRY_NOT_ENABLED" | "KNOWLEDGE_BINDING_REQUIRED" | "SKILL_REQUIRED" | "TOOL_REQUIRED" | "ARTIFACT_TYPE_REQUIRED" | "EVAL_REQUIRED" | "SECRET_REQUIRED" | "OVERLAY_REQUIRED" | "SERVICE_REQUIRED" | "WORKFLOW_REQUIRED" | "PACKAGE_HASH_MISSING" | "PACKAGE_HASH_MISMATCH" | "INSTALL_MODE_UNSUPPORTED" | "RUNTIME_VERSION_UNSUPPORTED" | "RUNTIME_PROFILE_MISSING";
+    code: "MANIFEST_VERSION_UNSUPPORTED" | "RUNTIME_TARGET_UNSUPPORTED" | "CAPABILITY_MISSING" | "CAPABILITY_VERSION_UNSUPPORTED" | "PERMISSION_REQUIRED" | "STORAGE_DECLARED_BUT_DISABLED" | "UI_RUNTIME_DISABLED" | "WORKER_RUNTIME_DISABLED" | "CLOUD_APP_DISABLED" | "CLOUD_LICENSE_UNAVAILABLE" | "CLOUD_REGISTRATION_REQUIRED" | "CLOUD_TOOL_UNAVAILABLE" | "CLOUD_POLICY_UNSUPPORTED" | "CLOUD_ENTRY_NOT_ENABLED" | "KNOWLEDGE_BINDING_REQUIRED" | "SKILL_REQUIRED" | "TOOL_REQUIRED" | "ARTIFACT_TYPE_REQUIRED" | "EVAL_REQUIRED" | "SECRET_REQUIRED" | "OVERLAY_REQUIRED" | "SERVICE_REQUIRED" | "WORKFLOW_REQUIRED" | "PACKAGE_HASH_MISSING" | "PACKAGE_HASH_MISMATCH";
     severity: "blocker" | "warning";
     message: string;
     capability?: string;
@@ -690,7 +551,6 @@ export interface ReadinessResult {
     supportedCapabilities: CapabilitySupport[];
     missingCapabilities: CapabilityRequirement[];
     entryReadiness: EntryReadiness[];
-    installModes: InstallModeReadiness[];
 }
 export interface AgentAppHostFlags {
     labEnabled: boolean;
@@ -734,7 +594,6 @@ export interface CleanupWarning {
 export interface AppCleanupPlan {
     mode: "dry-run";
     appId: string;
-    installMode: AgentAppInstallMode;
     packageHash: string;
     generatedAt: string;
     installedStatePaths: CleanupTarget[];
@@ -767,8 +626,6 @@ export interface InstalledAgentAppState {
     manifest: NormalizedAppManifest;
     projection: AgentAppProjection;
     readiness: ReadinessResult;
-    installMode: AgentAppInstallMode;
-    runtimeProfileSummary: AgentAppRuntimeProfileSummary;
     setup: AgentAppSetupState;
     disabled: boolean;
     installedAt: string;
@@ -935,9 +792,6 @@ export interface AgentAppTaskHostResponseResult {
 export interface AgentAppTaskRecord {
     taskId: string;
     traceId: string;
-    sessionId?: string;
-    turnId?: string;
-    workspaceId?: string;
     appId: string;
     entryKey?: string;
     retryOfTaskId?: string;

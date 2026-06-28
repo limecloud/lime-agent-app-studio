@@ -35,6 +35,21 @@ export async function startStudioServer(options = {}) {
         const { inspectProject } = await import("./core/project.mjs");
         return sendJson(res, await inspectProject(body.appDir || "."));
       }
+      if (req.method === "POST" && req.url === "/api/logo/brief") {
+        const body = await readJson(req);
+        const { buildLogoBrief } = await import("./core/logo-workshop.mjs");
+        return sendJson(res, await buildLogoBrief(body));
+      }
+      if (req.method === "POST" && req.url === "/api/logo/generate") {
+        const body = await readJson(req);
+        const { generateLogoAsset } = await import("./core/logo-workshop.mjs");
+        return sendJson(res, await generateLogoAsset(body));
+      }
+      if (req.method === "POST" && req.url === "/api/logo/install-host-result") {
+        const body = await readJson(req);
+        const { installHostGeneratedLogo } = await import("./core/logo-workshop.mjs");
+        return sendJson(res, await installHostGeneratedLogo(body));
+      }
       if (req.method === "POST" && req.url === "/api/publish") {
         const body = await readJson(req);
         const auth = await resolveAuthContext(body);

@@ -12,6 +12,10 @@ const appDirInput = document.querySelector("#appDir");
 const appIdInput = document.querySelector("#appId");
 const publishBtn = document.querySelector("#publishBtn");
 const inspectBtn = document.querySelector("#inspectBtn");
+const logoBriefBtn = document.querySelector("#logoBriefBtn");
+const logoGenerateBtn = document.querySelector("#logoGenerateBtn");
+const logoPreview = document.querySelector("#logoPreview");
+const logoWorkshopCopy = document.querySelector("#logoWorkshopCopy");
 const logPanel = document.querySelector("#logPanel");
 const advancedPanel = document.querySelector(".advanced-panel");
 const resultBanner = document.querySelector("#resultBanner");
@@ -67,6 +71,8 @@ function setBusy(label = "执行中") {
   setResultBanner(null);
   publishBtn.disabled = true;
   inspectBtn.disabled = true;
+  logoBriefBtn.disabled = true;
+  logoGenerateBtn.disabled = true;
 }
 
 function setStatus(label, tone = "idle") {
@@ -112,6 +118,7 @@ function render() {
     : "选择目录后显示应用名称和类型。";
   document.querySelector("#iconPreview").textContent = iconLabel;
   document.querySelector("#iconPreview").style.setProperty("--icon-bg", generated.iconBackground);
+  renderLogoPreview();
   document.querySelector("#categoryChips").replaceChildren(
     ...categoryLabels.map((item) => {
       const chip = document.createElement("span");
@@ -122,6 +129,8 @@ function render() {
 
   inspectBtn.disabled = !hasDir;
   publishBtn.disabled = !publishable;
+  logoBriefBtn.disabled = !inspection;
+  logoGenerateBtn.disabled = !inspection;
 
   document.querySelector("#activityText").textContent = state.manualDirectoryHint
     ? state.manualDirectoryHint
@@ -144,6 +153,27 @@ function render() {
       ? "发布会使用 Lime 当前登录状态。"
       : "查看诊断详情，修复后重新识别。"
     : "发布会使用 Lime 当前登录状态。";
+}
+
+function renderLogoPreview() {
+  const logo = state.logoResult;
+  logoPreview.replaceChildren();
+  if (logo?.dataUrl) {
+    const image = document.createElement("img");
+    image.src = logo.dataUrl;
+    image.alt = "";
+    logoPreview.append(image);
+    logoWorkshopCopy.textContent = "宿主已生成预览；写入后会随 .lapp 一起打包。";
+    return;
+  }
+  const generated = state.generated || buildGeneratedAssets({});
+  logoPreview.textContent = firstText(generated.iconLabel, "App");
+  logoPreview.style.setProperty("--icon-bg", firstText(generated.iconBackground, "#166534"));
+  logoWorkshopCopy.replaceChildren(
+    document.createTextNode("识别目录后可通过 Lime 宿主生成应用图标，并写入 "),
+    Object.assign(document.createElement("code"), { textContent: "APP.md" }),
+    document.createTextNode("。"),
+  );
 }
 
 async function post(path, body, options = {}) {
@@ -663,6 +693,323 @@ async function publish() {
   }
 }
 
+async function showLogoBrief() {
+  if (!state.inspection) return;
+  setBusy("生成提示词");
+  try {
+    const brief = await post("/api/logo/brief", { appDir: fieldValue("appDir") });
+    state.logoBrief = brief;
+    setStatus("提示词已生成", "ok");
+    setResultBanner({ tone: "ok", title: "Logo 提示词已生成", copy: "可用于宿主图片任务，也可复制给其他图片模型。" });
+    setOutput(formatLogoBrief(brief), { open: true });
+  } catch (error) {
+    setStatus("生成失败", "error");
+    setResultBanner({ tone: "error", title: "生成失败", copy: "查看诊断详情后重试。" });
+    setOutput(formatError(error), { open: true });
+  } finally {
+    render();
+  }
+}
+
+async function generateLogoWithHost() {
+  if (!state.inspection) return;
+  setBusy("宿主生成中");
+  try {
+    const brief = state.logoBrief || await post("/api/logo/brief", { appDir: fieldValue("appDir") });
+    state.logoBrief = brief;
+    if (!isEmbeddedRuntime()) {
+      throw new Error("Logo 生成需要在 Lime 宿主内运行 Studio，当前独立浏览器没有 Host Bridge。");
+    }
+    const task = await startHostLogoTask(brief);
+    await openHostLogoRun(task, brief);
+    const hostResult = await waitForHostLogoResult(task, brief);
+    const installed = await post("/api/logo/install-host-result", {
+      appDir: fieldValue("appDir"),
+      hostResult,
+      iconPath: "./assets/app-icon.png",
+    });
+    state.logoResult = {
+      ...installed,
+      dataUrl: installed.previewDataUrl,
+    };
+    setStatus("Logo 已写入", "ok");
+    setResultBanner({ tone: "ok", title: "Logo 已写入", copy: `${installed.iconPath} 已写入 APP.md，发布包会自动携带。` });
+    setOutput(formatLogoInstallResult(installed, brief), { open: false });
+    await inspectCurrent();
+  } catch (error) {
+    setStatus("Logo 失败", "error");
+    setResultBanner({ tone: "error", title: "Logo 生成失败", copy: "查看诊断详情后重试。" });
+    setOutput(formatError(error), { open: true });
+  } finally {
+    render();
+  }
+}
+
+async function startHostLogoTask(brief) {
+  const sdk = await loadLimeAppSdk();
+  if (!sdk?.createLimeHostBridgeCapabilityInvoker) {
+    throw new Error("当前宿主 SDK 不支持 Host Bridge。");
+  }
+  const invoker = sdk.createLimeHostBridgeCapabilityInvoker({
+    appId,
+    entryKey,
+    requestIdPrefix: "studio-logo",
+    requestTimeoutMs: 5 * 60 * 1000,
+  });
+  try {
+    const response = await invoker.call(buildLogoTaskRequest(brief));
+    if (!response.ok) {
+      throw new Error(readCapabilityErrorMessage(response));
+    }
+    return response.value;
+  } finally {
+    invoker.dispose?.();
+  }
+}
+
+function buildLogoTaskRequest(brief) {
+  const title = `${brief.displayName} Logo`;
+  return buildHostCloudSessionRequest({
+    capability: "lime.agent",
+    method: "startTask",
+    input: {
+      title: `生成 ${title}`,
+      taskKind: "agent_app.logo_generate",
+      idempotencyKey: `agent-app-logo:${brief.appId || brief.displayName}:${Date.now()}`,
+      prompt: brief.prompt,
+      input: {
+        appId: brief.appId,
+        displayName: brief.displayName,
+        description: brief.description,
+        prompt: brief.prompt,
+        assetType: "app_center_logo",
+        output: {
+          format: "png",
+          size: "1024x1024",
+          transparent: false,
+        },
+      },
+      expectedOutput: {
+        kind: "image_asset",
+        title,
+        acceptedFormats: ["png", "webp", "svg"],
+        installTarget: "./assets/app-icon.png",
+      },
+      requiredCapabilities: ["lime.capability.image.generate"],
+      capabilityHints: ["image_generate", "logo", "app_icon"],
+      tools: ["image_generate"],
+      humanReview: true,
+      queueIfBusy: true,
+      metadata: {
+        source: "lime-agent-app-studio.logo-workshop",
+        installTarget: "./assets/app-icon.png",
+      },
+    },
+  });
+}
+
+async function openHostLogoRun(task, brief) {
+  const sdk = await loadLimeAppSdk();
+  if (!sdk?.createLimeHostBridgeCapabilityInvoker) return;
+  const invoker = sdk.createLimeHostBridgeCapabilityInvoker({
+    appId,
+    entryKey,
+    requestIdPrefix: "studio-logo-run",
+    requestTimeoutMs: 15 * 1000,
+  });
+  try {
+    await invoker.call(buildHostCloudSessionRequest({
+      capability: "lime.ui",
+      method: "openAgentRun",
+      input: {
+        taskId: task.taskId,
+        sessionId: task.sessionId,
+        title: `生成 ${brief.displayName} Logo`,
+        mode: "drawer",
+        expectedOutput: {
+          kind: "image_asset",
+          installTarget: "./assets/app-icon.png",
+        },
+        task,
+      },
+    }));
+  } finally {
+    invoker.dispose?.();
+  }
+}
+
+async function waitForHostLogoResult(task, brief) {
+  const sdk = await loadLimeAppSdk();
+  const invoker = sdk.createLimeHostBridgeCapabilityInvoker({
+    appId,
+    entryKey,
+    requestIdPrefix: "studio-logo-watch",
+    requestTimeoutMs: 5 * 60 * 1000,
+  });
+  try {
+    const initial = await invoker.call(buildHostCloudSessionRequest({
+      capability: "lime.agent",
+      method: "getTask",
+      input: {
+        taskId: task.taskId,
+        sessionId: task.sessionId,
+        expectedOutput: task.expectedOutput,
+      },
+    }));
+    if (!initial.ok) {
+      throw new Error(readCapabilityErrorMessage(initial));
+    }
+    if (isFailedTask(initial.value)) {
+      throw new Error(readTaskFailureMessage(initial.value));
+    }
+    if (isTerminalTask(initial.value) && hasHostLogoImage(initial.value)) {
+      return initial.value;
+    }
+    const subscribed = await invoker.subscribeCapability(
+      {
+        capability: "lime.agent",
+        topic: "task",
+        input: {
+          taskId: task.taskId,
+          sessionId: task.sessionId,
+          bridgeAction: "studioLogoGenerate",
+          expectedOutput: task.expectedOutput,
+        },
+        pollIntervalMs: 1500,
+        bridgeAction: "studioLogoGenerate",
+      },
+      undefined,
+      { timeoutMs: 15 * 1000 },
+    );
+    if (!subscribed.ok) {
+      throw new Error(readCapabilityErrorMessage(subscribed));
+    }
+    const subscriptionId = subscribed.ok ? subscribed.value?.subscriptionId : "";
+    return await new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        cleanup();
+        reject(new Error("宿主 Logo 生成任务超时，请在运行现场确认任务是否已完成。"));
+      }, 5 * 60 * 1000);
+      const off = invoker.onCapabilityEvent((event) => {
+        if (subscriptionId && event.subscriptionId && event.subscriptionId !== subscriptionId) return;
+        const candidate = event.task || event.snapshot || event;
+        void updateHostLogoRun(invoker, candidate, brief);
+        if (!isTerminalTask(candidate)) return;
+        if (isFailedTask(candidate)) {
+          cleanup();
+          reject(new Error(readTaskFailureMessage(candidate)));
+          return;
+        }
+        if (!hasHostLogoImage(candidate)) return;
+        cleanup();
+        resolve(candidate);
+      });
+      function cleanup() {
+        window.clearTimeout(timeout);
+        off?.();
+        if (subscriptionId) {
+          invoker.unsubscribeCapability(subscriptionId).catch(() => {});
+        }
+      }
+    });
+  } finally {
+    invoker.dispose?.();
+  }
+}
+
+async function updateHostLogoRun(invoker, task, brief) {
+  try {
+    await invoker.call(buildHostCloudSessionRequest({
+      capability: "lime.ui",
+      method: "updateAgentRun",
+      input: {
+        taskId: task?.taskId,
+        sessionId: task?.sessionId,
+        title: `生成 ${brief.displayName} Logo`,
+        task,
+        snapshot: task,
+      },
+    }));
+  } catch {
+    // 运行现场更新是辅助能力，不阻断 Logo 主流程。
+  }
+}
+
+function isTerminalTask(value) {
+  const status = normalizeTaskStatus(value);
+  return [
+    "succeeded",
+    "success",
+    "completed",
+    "complete",
+    "failed",
+    "failure",
+    "error",
+    "cancelled",
+    "canceled",
+  ].includes(status);
+}
+
+function isFailedTask(value) {
+  const status = normalizeTaskStatus(value);
+  return ["failed", "failure", "error", "cancelled", "canceled"].includes(status);
+}
+
+function normalizeTaskStatus(value) {
+  const direct = firstText(value?.status, value?.taskStatus, value?.normalized_status, value?.normalizedStatus);
+  return direct.toLowerCase();
+}
+
+function readTaskFailureMessage(value) {
+  return firstText(value?.error?.message, value?.message, "宿主 Logo 生成任务未成功完成");
+}
+
+function hasHostLogoImage(value, seen = new Set()) {
+  if (!value || typeof value !== "object" || seen.has(value)) return false;
+  seen.add(value);
+  const candidate = firstText(
+    value.dataUrl,
+    value.data_url,
+    value.base64,
+    value.b64_json,
+    value.imageBase64,
+    value.image_base64,
+    value.absolute_artifact_path,
+    value.absoluteArtifactPath,
+    value.absolute_path,
+    value.absolutePath,
+    value.output_path,
+    value.outputPath,
+    value.artifact_path,
+    value.artifactPath,
+    value.file_path,
+    value.filePath,
+    value.image_path,
+    value.imagePath,
+    value.local_path,
+    value.localPath,
+    value.output_file,
+    value.outputFile,
+    value.file,
+    value.path,
+  );
+  if (
+    candidate &&
+    (/^(?:data:image\/|[A-Za-z]:[\\/]|\.{0,2}[\\/]|[/\\]|[^:]+?\.(?:png|webp|jpe?g|svg|json)$)/i.test(candidate) ||
+      /^[A-Za-z0-9+/]+={0,2}$/.test(candidate))
+  ) {
+    return true;
+  }
+  for (const key of ["image", "asset", "result", "output", "artifact", "metadata", "payload", "task", "snapshot", "runtimeEvent", "value"]) {
+    if (hasHostLogoImage(value[key], seen)) return true;
+  }
+  for (const key of ["images", "assets", "artifacts", "outputs", "files", "events", "taskEvents", "blocks", "items"]) {
+    const list = Array.isArray(value[key]) ? value[key] : [];
+    if (list.some((item) => hasHostLogoImage(item, seen))) return true;
+  }
+  return false;
+}
+
 function buildPublishSuccessBanner(payload) {
   const appName = payload.plan?.generated?.displayName || payload.plan?.appId || state.generated.name;
   const version = payload.publishedVersion || payload.release?.version || payload.plan?.version;
@@ -776,6 +1123,27 @@ function formatInspectionResult(payload, generated) {
   return lines;
 }
 
+function formatLogoBrief(brief) {
+  return [
+    `应用：${brief.displayName}`,
+    `图标路径：${brief.iconPath}`,
+    "",
+    "宿主图片任务提示词：",
+    brief.prompt,
+  ];
+}
+
+function formatLogoInstallResult(result, brief) {
+  return [
+    "Logo 已安装到应用目录。",
+    `应用：${brief.displayName}`,
+    `资产：${result.iconPath}`,
+    `manifest：${result.manifestUpdated ? "已写入 presentation.icon" : "已存在 presentation.icon"}`,
+    "",
+    "下一步：直接发布或重新打包，.lapp 会包含该资产。",
+  ];
+}
+
 function formatPublishResult(payload) {
   if (payload.mode === "dry-run") {
     return [
@@ -844,6 +1212,8 @@ for (const button of themeButtons) {
 document.querySelector("#selectDirBtn").addEventListener("click", selectDirectory);
 inspectBtn.addEventListener("click", inspectCurrent);
 publishBtn.addEventListener("click", publish);
+logoBriefBtn.addEventListener("click", showLogoBrief);
+logoGenerateBtn.addEventListener("click", generateLogoWithHost);
 appDirInput.addEventListener("change", () => {
   state.manualDirectoryHint = null;
   if (fieldValue("appDir")) inspectCurrent();

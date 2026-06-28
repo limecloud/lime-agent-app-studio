@@ -1,4 +1,4 @@
-import { type LimeCapabilityInvoker, type LimeCapabilityInvokeRequest, type LimeCapabilityInvokeResponse, type LimeCapabilityMethod, type LimeCapabilityName } from "./capabilityContract";
+import { type LimeCapabilityInvoker, type LimeCapabilityInvokeResponse, type LimeCapabilityName } from "./capabilityContract";
 export declare const LIME_AGENT_APP_BRIDGE_PROTOCOL = "lime.agentApp.bridge";
 export declare const LIME_AGENT_APP_BRIDGE_VERSION = 1;
 export interface LimeAgentAppBridgeClientMessage {
@@ -29,24 +29,12 @@ export interface CreateLimeHostBridgeCapabilityInvokerOptions {
     appId: string;
     entryKey?: string;
     windowRef?: LimeHostBridgeWindowLike;
-    hostWindow?: LimeHostBridgeWindowLike;
     targetOrigin?: string;
     trustedHostOrigin?: string;
     requestTimeoutMs?: number;
     requestIdPrefix?: string;
-    onSnapshot?: LimeHostBridgeEventHandler;
-    onTheme?: LimeHostBridgeEventHandler;
-    onVisibility?: LimeHostBridgeEventHandler;
-    onCapabilityEvent?: LimeHostBridgeCapabilityEventHandler;
 }
 export interface LimeHostBridgeCapabilityInvoker extends LimeCapabilityInvoker {
-    send(type: string, payload?: unknown, requestId?: string): void;
-    request(type: string, payload?: unknown, options?: LimeHostBridgeLegacyRequestOptions): Promise<unknown>;
-    ready(): void;
-    getSnapshot(): void;
-    notifyHost(message: string, level?: LimeHostBridgeNotifyPayload["level"]): Promise<LimeCapabilityInvokeResponse<{
-        accepted: true;
-    }>>;
     sendReady(): void;
     getHostSnapshot(): Promise<LimeCapabilityInvokeResponse<unknown>>;
     notifyHost(payload: LimeHostBridgeNotifyPayload): Promise<LimeCapabilityInvokeResponse<{
@@ -58,38 +46,16 @@ export interface LimeHostBridgeCapabilityInvoker extends LimeCapabilityInvoker {
     openExternalHost(payload: LimeHostBridgeOpenExternalPayload): Promise<LimeCapabilityInvokeResponse<{
         opened: true;
     }>>;
-    selectDirectoryHost(payload?: LimeHostBridgeSelectDirectoryPayload, options?: LimeHostBridgeLegacyRequestOptions): Promise<LimeCapabilityInvokeResponse<LimeHostBridgeSelectDirectoryResult>>;
-    downloadHost(payload: LimeHostBridgeDownloadPayload, options?: LimeHostBridgeLegacyRequestOptions): Promise<LimeCapabilityInvokeResponse<{
+    downloadHost(payload: LimeHostBridgeDownloadPayload): Promise<LimeCapabilityInvokeResponse<{
         downloaded: true;
     }>>;
     onHostSnapshot(handler: LimeHostBridgeEventHandler): () => void;
     onThemeUpdate(handler: LimeHostBridgeEventHandler): () => void;
     onVisibilityChange(handler: LimeHostBridgeEventHandler): () => void;
-    onCapabilityEvent(handler: LimeHostBridgeCapabilityEventHandler): () => void;
-    invoke<Capability extends LimeCapabilityName, Method extends LimeCapabilityMethod<Capability>>(request: LimeHostBridgeLegacyInvokeRequest<Capability, Method>, options?: LimeHostBridgeLegacyRequestOptions): Promise<unknown>;
-    subscribe(request: LimeHostBridgeCapabilitySubscribeRequest, options?: LimeHostBridgeLegacyRequestOptions): Promise<unknown>;
-    unsubscribe(subscriptionId: string, options?: LimeHostBridgeLegacyRequestOptions): Promise<unknown>;
-    subscribeCapability(request: LimeHostBridgeCapabilitySubscribeRequest, handler?: LimeHostBridgeCapabilityEventHandler, options?: LimeHostBridgeLegacyRequestOptions): Promise<LimeCapabilityInvokeResponse<LimeHostBridgeCapabilitySubscription>>;
-    unsubscribeCapability(subscriptionId: string, options?: LimeHostBridgeLegacyRequestOptions): Promise<LimeCapabilityInvokeResponse<LimeHostBridgeCapabilityUnsubscribeResult>>;
-    download(url: string, fileName?: string, options?: LimeHostBridgeLegacyRequestOptions): Promise<unknown>;
-    getCallLog(): LimeHostBridgeLegacyCallLogEntry[];
+    subscribeCapability(request: LimeHostBridgeCapabilitySubscribeRequest, handler: LimeHostBridgeCapabilityEventHandler): Promise<LimeCapabilityInvokeResponse<LimeHostBridgeCapabilitySubscription>>;
+    unsubscribeCapability(subscriptionId: string): Promise<LimeCapabilityInvokeResponse<LimeHostBridgeCapabilityUnsubscribeResult>>;
     dispose(): void;
     readonly pendingRequestCount: number;
-}
-export interface LimeHostBridgeLegacyRequestOptions {
-    requestId?: string;
-    timeoutMs?: number;
-}
-export interface LimeHostBridgeLegacyInvokeRequest<Capability extends LimeCapabilityName = LimeCapabilityName, Method extends LimeCapabilityMethod<Capability> = LimeCapabilityMethod<Capability>> {
-    capability: Capability;
-    method: Method;
-    args?: unknown;
-    provenance?: LimeCapabilityInvokeRequest["provenance"];
-}
-export interface LimeHostBridgeLegacyCallLogEntry {
-    capability: string;
-    method: string;
-    args?: unknown;
 }
 export interface LimeHostBridgeNotifyPayload {
     message: string;
@@ -106,35 +72,7 @@ export interface LimeHostBridgeNavigatePayload {
 export interface LimeHostBridgeOpenExternalPayload {
     url: string;
 }
-export interface LimeHostBridgeSelectDirectoryPayload {
-    title?: string;
-}
-export interface LimeHostBridgeSelectDirectoryResult {
-    path: string | null;
-    cancelled: boolean;
-    message?: string;
-}
 export type LimeHostBridgeEventHandler = (payload: unknown) => void;
-export interface LimeHostThemeSnapshot {
-    themeMode?: string;
-    effectiveThemeMode?: string;
-    colorSchemeId?: string;
-    tokens?: Record<string, string>;
-}
-export interface LimeHostThemeDocumentLike {
-    documentElement: LimeHostThemeElementLike;
-}
-export interface LimeHostThemeElementLike {
-    dataset: Record<string, string | undefined>;
-    style: {
-        colorScheme?: string;
-        setProperty(name: string, value: string): void;
-    };
-}
-export interface SyncLimeHostThemeOptions {
-    documentRef?: LimeHostThemeDocumentLike;
-    allowedTokenPrefixes?: string[];
-}
 export interface LimeHostBridgeCapabilitySubscribeRequest {
     capability: LimeCapabilityName;
     topic: string;
@@ -168,7 +106,5 @@ export interface LimeHostBridgeCapabilityEvent {
     emittedAt?: string;
 }
 export type LimeHostBridgeCapabilityEventHandler = (event: LimeHostBridgeCapabilityEvent) => void;
-export declare function applyLimeHostTheme(payload: unknown, options?: SyncLimeHostThemeOptions): LimeHostThemeSnapshot | null;
-export declare function syncLimeHostTheme(invoker: Pick<LimeHostBridgeCapabilityInvoker, "onHostSnapshot" | "onThemeUpdate" | "getHostSnapshot">, options?: SyncLimeHostThemeOptions): () => void;
 export declare function createLimeHostBridgeCapabilityInvoker(options: CreateLimeHostBridgeCapabilityInvokerOptions): LimeHostBridgeCapabilityInvoker;
 export {};

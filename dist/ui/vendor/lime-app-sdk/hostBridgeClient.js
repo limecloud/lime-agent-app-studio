@@ -1,193 +1,126 @@
-var I = Object.defineProperty;
-var w = (i, e, t) => e in i ? I(i, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : i[e] = t;
-var n = (i, e, t) => w(i, typeof e != "symbol" ? e + "" : e, t);
-import { buildLimeCapabilityInvokeRequest as H } from "./capabilityContract.js";
-import { toLimeCapabilityError as l } from "./capabilityErrors.js";
-const m = "lime.agentApp.bridge", b = 1, q = 15e3, R = 5 * 6e4;
-function a(i) {
-  return typeof i == "object" && i !== null;
+var y = Object.defineProperty;
+var g = (e, t, i) => t in e ? y(e, t, { enumerable: !0, configurable: !0, writable: !0, value: i }) : e[t] = i;
+var r = (e, t, i) => g(e, typeof t != "symbol" ? t + "" : t, i);
+import { toLimeCapabilityError as u } from "./capabilityErrors.js";
+const c = "lime.agentApp.bridge", l = 1, b = 15e3;
+function o(e) {
+  return typeof e == "object" && e !== null;
 }
-function p(i, e) {
-  return Object.entries(e).forEach(([t, s]) => {
-    s !== void 0 && (i[t] = s);
-  }), i;
+function p(e, t) {
+  return Object.entries(t).forEach(([i, s]) => {
+    s !== void 0 && (e[i] = s);
+  }), e;
 }
-function h(i) {
-  return typeof i == "string" && i.trim() ? i.trim() : void 0;
+function a(e) {
+  return typeof e == "string" && e.trim() ? e.trim() : void 0;
 }
-function E(i) {
-  if (!a(i))
-    return null;
-  const e = a(i.theme) ? i.theme : i;
-  if (!a(e))
-    return null;
-  const t = a(e.tokens) ? Object.fromEntries(
-    Object.entries(e.tokens).filter(
-      (c) => typeof c[0] == "string" && typeof c[1] == "string" && c[1].trim().length > 0
-    )
-  ) : void 0, s = {}, r = h(e.themeMode), o = h(e.effectiveThemeMode), d = h(e.colorSchemeId);
-  return r && (s.themeMode = r), o && (s.effectiveThemeMode = o), d && (s.colorSchemeId = d), t && (s.tokens = t), s;
+function f(e) {
+  return o(e) && e.protocol === c && e.version === l && typeof e.type == "string" && typeof e.appId == "string" && (e.requestId === void 0 || typeof e.requestId == "string") && (e.entryKey === void 0 || typeof e.entryKey == "string");
 }
-function T(i, e = {}) {
-  const t = E(i);
-  if (!t)
-    return null;
-  const r = (e.documentRef ?? (typeof document > "u" ? void 0 : document))?.documentElement;
-  if (!r)
-    return t;
-  const o = e.allowedTokenPrefixes ?? [
-    "--lime-",
-    "--app-"
-  ];
-  for (const [d, c] of Object.entries(t.tokens ?? {}))
-    o.some((g) => d.startsWith(g)) && r.style.setProperty(d, c);
-  return t.themeMode && (r.dataset.limeTheme = t.themeMode), t.effectiveThemeMode && (r.dataset.limeThemeEffective = t.effectiveThemeMode, r.style.colorScheme = t.effectiveThemeMode === "dark" ? "dark" : "light"), t.colorSchemeId && (r.dataset.limeColorScheme = t.colorSchemeId), t;
-}
-function K(i, e = {}) {
-  const t = (o) => {
-    T(o, e);
-  }, s = i.onHostSnapshot(t), r = i.onThemeUpdate(t);
-  return i.getHostSnapshot().then((o) => {
-    o.ok && t(o.value);
-  }), () => {
-    s(), r();
-  };
-}
-function u(i) {
-  if (i.ok)
-    return i.value;
-  const e = new Error(i.error.message);
-  throw e.code = i.error.code, e.payload = i.error, e.capability = i.error.capability, e.method = i.error.method, e.requestId = i.error.requestId, e;
-}
-function M(i) {
-  return a(i) && i.protocol === m && i.version === b && typeof i.type == "string" && typeof i.appId == "string" && (i.requestId === void 0 || typeof i.requestId == "string") && (i.entryKey === void 0 || typeof i.entryKey == "string");
-}
-function y(i, e) {
-  if (a(i) && i.ok === !1)
+function h(e, t) {
+  if (o(e) && e.ok === !1)
     return {
       ok: !1,
-      error: l(i.error ?? i, {
-        appId: e.appId,
-        entryKey: e.entryKey,
-        capability: e.request.capability,
-        method: e.request.method,
-        requestId: e.request.requestId
+      error: u(e.error ?? e, {
+        appId: t.appId,
+        entryKey: t.entryKey,
+        capability: t.request.capability,
+        method: t.request.method,
+        requestId: t.request.requestId
       })
     };
-  if (a(i) && i.ok === !0) {
-    const t = Object.prototype.hasOwnProperty.call(i, "value") ? i.value : Object.prototype.hasOwnProperty.call(i, "result") ? i.result : void 0;
+  if (o(e) && e.ok === !0) {
+    const i = Object.prototype.hasOwnProperty.call(e, "value") ? e.value : Object.prototype.hasOwnProperty.call(e, "result") ? e.result : void 0;
     return p(
       {
         ok: !0,
-        value: t
+        value: i
       },
       {
-        traceId: h(i.traceId),
-        evidenceId: h(i.evidenceId)
+        traceId: a(e.traceId),
+        evidenceId: a(e.evidenceId)
       }
     );
   }
-  return a(i) && Object.prototype.hasOwnProperty.call(i, "result") ? {
+  return o(e) && Object.prototype.hasOwnProperty.call(e, "result") ? {
     ok: !0,
-    value: i.result
+    value: e.result
   } : {
     ok: !0,
-    value: i
+    value: e
   };
 }
-function f(i) {
+function I(e) {
   return p(
     {
-      capability: i.capability,
-      method: i.method
+      capability: e.capability,
+      method: e.method
     },
     {
-      input: i.args,
-      idempotencyKey: i.idempotencyKey,
-      expectedSchema: i.expectedSchema,
-      provenance: i.provenance
+      input: e.args,
+      idempotencyKey: e.idempotencyKey,
+      expectedSchema: e.expectedSchema,
+      provenance: e.provenance
     }
   );
 }
-class v {
-  constructor(e) {
-    n(this, "appId");
-    n(this, "entryKey");
-    n(this, "windowRef");
-    n(this, "targetOrigin");
-    n(this, "trustedHostOrigin");
-    n(this, "requestTimeoutMs");
-    n(this, "requestIdPrefix");
-    n(this, "pendingRequests", /* @__PURE__ */ new Map());
-    n(this, "subscriptionHandlers", /* @__PURE__ */ new Map());
-    n(this, "snapshotHandlers", /* @__PURE__ */ new Set());
-    n(this, "themeHandlers", /* @__PURE__ */ new Set());
-    n(this, "visibilityHandlers", /* @__PURE__ */ new Set());
-    n(this, "capabilityEventHandlers", /* @__PURE__ */ new Set());
-    n(this, "callLog", []);
-    n(this, "requestSequence", 0);
-    n(this, "disposed", !1);
-    n(this, "send", (e, t, s) => {
-      this.postBridgeMessage(e, t, s);
-    });
-    n(this, "request", (e, t, s = {}) => {
-      const r = this.buildHostActionContext(
-        "lime.ui",
-        e || "request",
-        s.requestId
-      );
-      return this.requestBridgeAction(e, t, r, s).then(
-        u
-      );
-    });
-    n(this, "ready", () => {
-      this.sendReady();
-    });
-    n(this, "getSnapshot", () => {
-      this.postBridgeMessage("host:getSnapshot");
-    });
-    n(this, "getCallLog", () => [...this.callLog]);
-    n(this, "handleHostMessage", (e) => {
-      if (e.source !== this.windowRef?.parent || this.trustedHostOrigin && e.origin !== this.trustedHostOrigin || !M(e.data) || e.data.appId !== this.appId || this.entryKey && e.data.entryKey && e.data.entryKey !== this.entryKey)
+class m {
+  constructor(t) {
+    r(this, "appId");
+    r(this, "entryKey");
+    r(this, "windowRef");
+    r(this, "targetOrigin");
+    r(this, "trustedHostOrigin");
+    r(this, "requestTimeoutMs");
+    r(this, "requestIdPrefix");
+    r(this, "pendingRequests", /* @__PURE__ */ new Map());
+    r(this, "subscriptionHandlers", /* @__PURE__ */ new Map());
+    r(this, "snapshotHandlers", /* @__PURE__ */ new Set());
+    r(this, "themeHandlers", /* @__PURE__ */ new Set());
+    r(this, "visibilityHandlers", /* @__PURE__ */ new Set());
+    r(this, "requestSequence", 0);
+    r(this, "disposed", !1);
+    r(this, "handleHostMessage", (t) => {
+      if (t.source !== this.windowRef?.parent || this.trustedHostOrigin && t.origin !== this.trustedHostOrigin || !f(t.data) || t.data.appId !== this.appId || this.entryKey && t.data.entryKey && t.data.entryKey !== this.entryKey)
         return;
-      if (e.data.type === "host:snapshot") {
-        a(e.data.payload) && a(e.data.payload.app) && (this.entryKey = h(e.data.payload.app.entryKey) ?? this.entryKey), this.dispatchHostEvent(this.snapshotHandlers, e.data.payload), e.data.requestId && this.settlePendingResponse(e.data.requestId, e.data.payload);
+      if (t.data.type === "host:snapshot") {
+        this.dispatchHostEvent(this.snapshotHandlers, t.data.payload), t.data.requestId && this.settlePendingResponse(t.data.requestId, t.data.payload);
         return;
       }
-      if (e.data.type === "theme:update") {
-        this.dispatchHostEvent(this.themeHandlers, e.data.payload);
+      if (t.data.type === "theme:update") {
+        this.dispatchHostEvent(this.themeHandlers, t.data.payload);
         return;
       }
-      if (e.data.type === "host:visibility") {
-        this.dispatchHostEvent(this.visibilityHandlers, e.data.payload);
+      if (t.data.type === "host:visibility") {
+        this.dispatchHostEvent(this.visibilityHandlers, t.data.payload);
         return;
       }
-      if (e.data.type === "capability:event") {
-        this.dispatchCapabilityEvent(e.data.payload);
+      if (t.data.type === "capability:event") {
+        this.dispatchCapabilityEvent(t.data.payload);
         return;
       }
-      if (e.data.type !== "host:response" && e.data.type !== "host:error")
+      if (t.data.type !== "host:response" && t.data.type !== "host:error")
         return;
-      const t = e.data.requestId;
-      if (!t)
+      const i = t.data.requestId;
+      if (!i)
         return;
-      const s = this.pendingRequests.get(t);
+      const s = this.pendingRequests.get(i);
       if (s) {
-        if (this.windowRef?.clearTimeout(s.timerId), this.pendingRequests.delete(t), e.data.type === "host:error") {
+        if (this.windowRef?.clearTimeout(s.timerId), this.pendingRequests.delete(i), t.data.type === "host:error") {
           s.resolve({
             ok: !1,
-            error: l(e.data.payload, {
+            error: u(t.data.payload, {
               appId: this.appId,
               entryKey: this.entryKey,
               capability: s.request.capability,
               method: s.request.method,
-              requestId: t
+              requestId: i
             })
           });
           return;
         }
         s.resolve(
-          y(e.data.payload, {
+          h(t.data.payload, {
             appId: this.appId,
             entryKey: this.entryKey,
             request: s.request
@@ -195,185 +128,122 @@ class v {
         );
       }
     });
-    this.appId = e.appId, this.entryKey = e.entryKey, this.windowRef = e.windowRef ?? e.hostWindow ?? (typeof window > "u" ? void 0 : window), this.targetOrigin = e.targetOrigin ?? e.trustedHostOrigin ?? "*", this.trustedHostOrigin = e.trustedHostOrigin, this.requestTimeoutMs = e.requestTimeoutMs ?? q, this.requestIdPrefix = e.requestIdPrefix ?? "lime-capability", e.onSnapshot && this.snapshotHandlers.add(e.onSnapshot), e.onTheme && this.themeHandlers.add(e.onTheme), e.onVisibility && this.visibilityHandlers.add(e.onVisibility), e.onCapabilityEvent && this.capabilityEventHandlers.add(e.onCapabilityEvent), this.windowRef?.addEventListener("message", this.handleHostMessage);
+    this.appId = t.appId, this.entryKey = t.entryKey, this.windowRef = t.windowRef ?? (typeof window > "u" ? void 0 : window), this.targetOrigin = t.targetOrigin ?? t.trustedHostOrigin ?? "*", this.trustedHostOrigin = t.trustedHostOrigin, this.requestTimeoutMs = t.requestTimeoutMs ?? b, this.requestIdPrefix = t.requestIdPrefix ?? "lime-capability", this.windowRef?.addEventListener("message", this.handleHostMessage);
   }
   get pendingRequestCount() {
     return this.pendingRequests.size;
   }
-  async call(e) {
-    this.callLog.push({
-      capability: e.capability,
-      method: e.method,
-      args: e.args
-    });
-    const t = {
-      ...e,
-      requestId: e.requestId ?? this.nextRequestId(e)
+  async call(t) {
+    const i = {
+      ...t,
+      requestId: t.requestId ?? this.nextRequestId(t)
     };
     return this.requestBridgeAction(
       "capability:invoke",
-      f(t),
-      t
+      I(i),
+      i
     );
   }
   sendReady() {
     this.postBridgeMessage("app:ready");
   }
   getHostSnapshot() {
-    const e = this.buildHostActionContext("lime.ui", "getSnapshot");
-    return this.requestBridgeAction("host:getSnapshot", void 0, e);
+    const t = this.buildHostActionContext("lime.ui", "getSnapshot");
+    return this.requestBridgeAction("host:getSnapshot", void 0, t);
   }
-  notifyHost(e, t) {
-    const s = typeof e == "string" ? { message: e, level: t } : e, r = this.buildHostActionContext("lime.ui", "toast");
+  notifyHost(t) {
+    const i = this.buildHostActionContext("lime.ui", "toast");
     return this.requestBridgeAction(
       "host:toast",
-      s,
-      r
+      t,
+      i
     );
   }
-  navigateHost(e) {
-    const t = this.buildHostActionContext("lime.ui", "navigate");
+  navigateHost(t) {
+    const i = this.buildHostActionContext("lime.ui", "navigate");
     return this.requestBridgeAction(
       "host:navigate",
-      e,
-      t
+      t,
+      i
     );
   }
-  openExternalHost(e) {
-    const t = this.buildHostActionContext("lime.ui", "openExternal");
+  openExternalHost(t) {
+    const i = this.buildHostActionContext("lime.ui", "openExternal");
     return this.requestBridgeAction(
       "host:openExternal",
-      e,
-      t
+      t,
+      i
     );
   }
-  selectDirectoryHost(e = {}, t = {}) {
-    const s = {
-      capability: "lime.ui",
-      method: "selectDirectory",
-      args: e,
-      requestId: t.requestId ?? this.nextRequestId({
-        capability: "lime.ui",
-        method: "selectDirectory"
-      })
-    };
-    return this.callLog.push({
-      capability: s.capability,
-      method: s.method,
-      args: e
-    }), this.requestBridgeAction(
-      "capability:invoke",
-      f(s),
-      s,
-      {
-        ...t,
-        timeoutMs: t.timeoutMs ?? R
-      }
-    );
-  }
-  downloadHost(e, t = {}) {
-    const s = this.buildHostActionContext("lime.ui", "download");
+  downloadHost(t) {
+    const i = this.buildHostActionContext("lime.ui", "download");
     return this.requestBridgeAction(
       "host:download",
-      e,
-      s,
-      t
+      t,
+      i
     );
   }
-  onHostSnapshot(e) {
-    return this.snapshotHandlers.add(e), () => {
-      this.snapshotHandlers.delete(e);
+  onHostSnapshot(t) {
+    return this.snapshotHandlers.add(t), () => {
+      this.snapshotHandlers.delete(t);
     };
   }
-  onThemeUpdate(e) {
-    return this.themeHandlers.add(e), () => {
-      this.themeHandlers.delete(e);
+  onThemeUpdate(t) {
+    return this.themeHandlers.add(t), () => {
+      this.themeHandlers.delete(t);
     };
   }
-  onVisibilityChange(e) {
-    return this.visibilityHandlers.add(e), () => {
-      this.visibilityHandlers.delete(e);
+  onVisibilityChange(t) {
+    return this.visibilityHandlers.add(t), () => {
+      this.visibilityHandlers.delete(t);
     };
   }
-  onCapabilityEvent(e) {
-    return this.capabilityEventHandlers.add(e), () => {
-      this.capabilityEventHandlers.delete(e);
-    };
-  }
-  invoke(e, t = {}) {
-    return this.call(
-      H({
-        capability: e.capability,
-        method: e.method,
-        args: e.args,
-        requestId: t.requestId,
-        provenance: e.provenance
-      })
-    ).then(u);
-  }
-  subscribe(e, t = {}) {
-    return this.subscribeCapability(e, void 0, t).then(
-      u
-    );
-  }
-  unsubscribe(e, t = {}) {
-    return this.unsubscribeCapability(e, t).then(
-      u
-    );
-  }
-  async subscribeCapability(e, t, s = {}) {
-    const r = {
-      capability: e.capability,
+  async subscribeCapability(t, i) {
+    const s = {
+      capability: t.capability,
       method: "subscribe",
-      requestId: s.requestId ?? this.nextRequestId({
-        capability: e.capability,
+      requestId: this.nextRequestId({
+        capability: t.capability,
         method: "subscribe"
       })
-    }, o = await this.requestBridgeAction(
+    }, n = await this.requestBridgeAction(
       "capability:subscribe",
       p(
         {
-          capability: e.capability,
-          topic: e.topic
+          capability: t.capability,
+          topic: t.topic
         },
         {
-          input: e.input,
-          subscriptionId: e.subscriptionId,
-          pollIntervalMs: e.pollIntervalMs,
-          bridgeAction: e.bridgeAction
+          input: t.input,
+          subscriptionId: t.subscriptionId,
+          pollIntervalMs: t.pollIntervalMs,
+          bridgeAction: t.bridgeAction
         }
       ),
-      r,
       s
     );
-    if (o.ok && a(o.value)) {
-      const d = h(o.value.subscriptionId);
-      d && t && this.subscriptionHandlers.set(d, t);
+    if (n.ok && o(n.value)) {
+      const d = a(n.value.subscriptionId);
+      d && this.subscriptionHandlers.set(d, i);
     }
-    return o;
+    return n;
   }
-  async unsubscribeCapability(e, t = {}) {
-    const s = {
+  async unsubscribeCapability(t) {
+    const i = {
       capability: "lime.agent",
       method: "unsubscribe",
-      requestId: t.requestId ?? this.nextRequestId({
+      requestId: this.nextRequestId({
         capability: "lime.agent",
         method: "unsubscribe"
       })
-    }, r = await this.requestBridgeAction(
+    }, s = await this.requestBridgeAction(
       "capability:unsubscribe",
-      { subscriptionId: e },
-      s,
-      t
+      { subscriptionId: t },
+      i
     );
-    return r.ok && this.subscriptionHandlers.delete(e), r;
+    return s.ok && this.subscriptionHandlers.delete(t), s;
   }
-  download(e, t, s = {}) {
-    return this.downloadHost({ url: e, fileName: t }, s).then(
-      u
-    );
-  }
-  requestBridgeAction(e, t, s, r = {}) {
+  requestBridgeAction(t, i, s) {
     return this.disposed || !this.windowRef || this.windowRef.parent === this.windowRef.self ? Promise.resolve({
       ok: !1,
       error: this.buildError(
@@ -381,9 +251,9 @@ class v {
         "Lime host bridge is not connected.",
         s
       )
-    }) : new Promise((o) => {
+    }) : new Promise((n) => {
       const d = this.windowRef.setTimeout(() => {
-        this.pendingRequests.delete(s.requestId), o({
+        this.pendingRequests.delete(s.requestId), n({
           ok: !1,
           error: this.buildError(
             "TIMEOUT",
@@ -391,78 +261,76 @@ class v {
             s
           )
         });
-      }, r.timeoutMs ?? this.requestTimeoutMs);
+      }, this.requestTimeoutMs);
       this.pendingRequests.set(s.requestId, {
         request: s,
-        resolve: o,
+        resolve: n,
         timerId: d
-      }), this.postBridgeMessage(e, t, s.requestId);
+      }), this.postBridgeMessage(t, i, s.requestId);
     });
   }
   dispose() {
     if (!this.disposed) {
       this.disposed = !0, this.windowRef?.removeEventListener("message", this.handleHostMessage);
-      for (const e of this.pendingRequests.values())
-        this.windowRef?.clearTimeout(e.timerId);
+      for (const t of this.pendingRequests.values())
+        this.windowRef?.clearTimeout(t.timerId);
       this.pendingRequests.clear(), this.subscriptionHandlers.clear(), this.snapshotHandlers.clear(), this.themeHandlers.clear(), this.visibilityHandlers.clear();
     }
   }
-  settlePendingResponse(e, t) {
-    const s = this.pendingRequests.get(e);
-    s && (this.windowRef?.clearTimeout(s.timerId), this.pendingRequests.delete(e), s.resolve(
-      y(t, {
+  settlePendingResponse(t, i) {
+    const s = this.pendingRequests.get(t);
+    s && (this.windowRef?.clearTimeout(s.timerId), this.pendingRequests.delete(t), s.resolve(
+      h(i, {
         appId: this.appId,
         entryKey: this.entryKey,
         request: s.request
       })
     ));
   }
-  dispatchHostEvent(e, t) {
-    for (const s of e)
-      s(t);
+  dispatchHostEvent(t, i) {
+    for (const s of t)
+      s(i);
   }
-  dispatchCapabilityEvent(e) {
-    if (!a(e))
+  dispatchCapabilityEvent(t) {
+    if (!o(t))
       return;
-    const t = h(e.subscriptionId), s = e;
-    for (const o of this.capabilityEventHandlers)
-      o(s);
-    if (!t)
+    const i = a(t.subscriptionId);
+    if (!i)
       return;
-    const r = this.subscriptionHandlers.get(t);
-    r && r(s);
+    const s = this.subscriptionHandlers.get(i);
+    s && s(t);
   }
-  postBridgeMessage(e, t, s) {
+  postBridgeMessage(t, i, s) {
     this.disposed || !this.windowRef || this.windowRef.parent === this.windowRef.self || this.windowRef.parent.postMessage(
-      this.buildMessage(e, t, s),
+      this.buildMessage(t, i, s),
       this.targetOrigin
     );
   }
-  buildMessage(e, t, s) {
+  buildMessage(t, i, s) {
     return {
-      protocol: m,
-      version: b,
-      type: e,
+      protocol: c,
+      version: l,
+      type: t,
       requestId: s,
       appId: this.appId,
       entryKey: this.entryKey,
-      payload: t
+      payload: i
     };
   }
-  buildHostActionContext(e, t, s) {
+  buildHostActionContext(t, i) {
     return {
-      capability: e,
-      method: t,
-      requestId: s ?? this.nextRequestId({ capability: e, method: t })
+      capability: t,
+      method: i,
+      requestId: this.nextRequestId({ capability: t, method: i })
     };
   }
-  nextRequestId(e) {
-    return this.requestSequence += 1, `${this.requestIdPrefix}-${this.requestSequence}-${e.capability}:${e.method}`;
+  nextRequestId(t) {
+    return this.requestSequence += 1, `${this.requestIdPrefix}-${this.requestSequence}-${t.capability}:${t.method}`;
   }
-  buildError(e, t, s) {
-    return l({
-      code: e,
-      message: t
+  buildError(t, i, s) {
+    return u({
+      code: t,
+      message: i
     }, {
       appId: this.appId,
       entryKey: this.entryKey,
@@ -472,13 +340,11 @@ class v {
     });
   }
 }
-function O(i) {
-  return new v(i);
+function H(e) {
+  return new m(e);
 }
 export {
-  m as LIME_AGENT_APP_BRIDGE_PROTOCOL,
-  b as LIME_AGENT_APP_BRIDGE_VERSION,
-  T as applyLimeHostTheme,
-  O as createLimeHostBridgeCapabilityInvoker,
-  K as syncLimeHostTheme
+  c as LIME_AGENT_APP_BRIDGE_PROTOCOL,
+  l as LIME_AGENT_APP_BRIDGE_VERSION,
+  H as createLimeHostBridgeCapabilityInvoker
 };

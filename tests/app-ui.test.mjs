@@ -75,6 +75,31 @@ test("可视化发布页保持极简主路径，技术信息默认收进折叠�
   assert.doesNotMatch(appSource, /dryRunBtn|addEventListener\("click", dryRun\)|#autoIconState|#autoType|updateStages/);
 });
 
+test("Logo 工坊通过 Lime 宿主生成并写回可打包资产", () => {
+  assert.match(htmlSource, /id="logoBriefBtn"[^>]*>生成提示词<\/button>/);
+  assert.match(htmlSource, /id="logoGenerateBtn"[^>]*>请求宿主生成<\/button>/);
+  assert.match(appSource, /async function generateLogoWithHost\(\)/);
+  assert.match(appSource, /capability:\s*"lime\.agent"/);
+  assert.match(appSource, /method:\s*"startTask"/);
+  assert.match(appSource, /taskKind:\s*"agent_app\.logo_generate"/);
+  assert.match(appSource, /requiredCapabilities:\s*\["lime\.capability\.image\.generate"\]/);
+  assert.match(appSource, /capability:\s*"lime\.ui"[\s\S]*method:\s*"openAgentRun"/);
+  assert.match(appSource, /\/api\/logo\/install-host-result/);
+  assert.match(capabilitiesSource, /lime\.agent:\s*[\s\S]*通过宿主 Agent 任务生成应用中心 Logo/);
+  assert.match(capabilitiesSource, /lime\.storage:\s*[\s\S]*Host Bridge SDK 在宿主内需要应用级临时状态上下文/);
+  assert.match(appSource, /logoBriefBtn\.addEventListener\("click", showLogoBrief\)/);
+  assert.match(appSource, /logoGenerateBtn\.addEventListener\("click", generateLogoWithHost\)/);
+  assert.doesNotMatch(appSource, /generateLogoWithHost[\s\S]*\/api\/logo\/generate/);
+  assert.doesNotMatch(capabilitiesSource, /后续版本用于生成/);
+});
+
+test("Logo 工坊独立浏览器不伪造宿主生成结果", () => {
+  assert.match(appSource, /Logo 生成需要在 Lime 宿主内运行 Studio/);
+  assert.match(appSource, /当前独立浏览器没有 Host Bridge/);
+  assert.match(appSource, /waitForHostLogoResult/);
+  assert.match(appSource, /subscribeCapability/);
+});
+
 test("发布页跟随宿主主题，并提供本地主题切换", () => {
   assert.match(capabilitiesSource, /features:\s*[\s\S]*-\s+theme/);
   assert.match(htmlSource, /class="theme-switcher"/);

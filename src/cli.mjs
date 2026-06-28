@@ -7,6 +7,7 @@ import { getDeveloperProfile } from "./core/api.mjs";
 import { inspectProject } from "./core/project.mjs";
 import { packageProject } from "./core/packager.mjs";
 import { publishProject } from "./core/publisher.mjs";
+import { attachLogoAsset, buildLogoBrief, generateLogoAsset } from "./core/logo-workshop.mjs";
 import { startStudioServer } from "./server.mjs";
 
 export async function runCli(argv) {
@@ -18,6 +19,28 @@ export async function runCli(argv) {
       return authStatus(options);
     case "project inspect":
       return printJson(await inspectProject(options.appDir || "."));
+    case "logo brief":
+      return printJson(
+        await buildLogoBrief({
+          appDir: options.appDir || ".",
+          iconPath: options.iconPath,
+        })
+      );
+    case "logo generate":
+      return printJson(
+        await generateLogoAsset({
+          appDir: options.appDir || ".",
+          iconPath: options.iconPath,
+        })
+      );
+    case "logo attach":
+      return printJson(
+        await attachLogoAsset({
+          appDir: options.appDir || ".",
+          iconPath: options.iconPath,
+          source: options.source,
+        })
+      );
     case "package":
       return printJson(
         await packageProject({
@@ -93,6 +116,9 @@ Usage:
   lime-agent-app-studio auth login --tenant-id <id> --token <token> [--api-base <url>]  # token 仅用于校验
   lime-agent-app-studio auth status --tenant-id <id>
   lime-agent-app-studio project inspect --app-dir <path>
+  lime-agent-app-studio logo brief --app-dir <path> [--icon-path assets/app-icon.svg]
+  lime-agent-app-studio logo generate --app-dir <path> [--icon-path assets/app-icon.svg]
+  lime-agent-app-studio logo attach --app-dir <path> --source <image> [--icon-path assets/app-icon.svg]
   lime-agent-app-studio package --app-dir <path> [--out-dir <path>] [--include-node-modules]
   lime-agent-app-studio publish --app-dir <path> --app-id <id> --tenant-id <id> --channel beta --dry-run
   lime-agent-app-studio publish --app-dir <path> --app-id <id> --tenant-id <id> --channel stable --publish

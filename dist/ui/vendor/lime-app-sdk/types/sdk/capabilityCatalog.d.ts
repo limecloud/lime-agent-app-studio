@@ -28,7 +28,7 @@ export declare const LIME_CAPABILITY_DEFINITIONS: readonly [{
     readonly group: "app_surface";
     readonly stage: "current";
     readonly owner: "desktop_host";
-    readonly methods: readonly ["toast", "navigate", "openExternal", "download", "selectDirectory", "getSnapshot", "openAgentRun", "updateAgentRun", "closeAgentRun"];
+    readonly methods: readonly ["toast", "navigate", "openExternal", "download", "getSnapshot", "openAgentRun", "updateAgentRun", "closeAgentRun"];
     readonly summary: "Lime 桌面壳的提示、导航、下载、主题、快照和统一 Agent Run UI 能力。";
     readonly appResponsibility: "决定业务页面如何展示和何时触发 Host action。";
     readonly limeResponsibility: "校验入口、同步主题语言、执行受控导航和下载，并提供通用 AI 运行现场。";
@@ -381,19 +381,6 @@ export declare const LIME_CAPABILITY_DEFINITIONS: readonly [{
     readonly summary: "外部系统连接器、授权状态和受控集成调用。";
     readonly appResponsibility: "声明业务连接需求和用户动作。";
     readonly limeResponsibility: "托管 OAuth、secret、tenant policy 和审计。";
-    readonly profile: {
-        readonly adapter: "adapter";
-    };
-}, {
-    readonly name: "lime.cloudSession";
-    readonly version: "0.1.0";
-    readonly group: "governance";
-    readonly stage: "preview";
-    readonly owner: "cloud_overlay";
-    readonly methods: readonly ["getSnapshot", "getAccessToken", "requestLogin"];
-    readonly summary: "宿主 Lime 当前云端会话快照、登录触发与 just-in-time 访问令牌能力，快照不暴露 bearer token。";
-    readonly appResponsibility: "声明需要宿主会话的业务目的，并按需获取当前令牌后自行调用开放平台 API。";
-    readonly limeResponsibility: "只暴露最小会话快照、按需签发短时 token，并保留登录与审计边界。";
     readonly profile: {
         readonly adapter: "adapter";
     };

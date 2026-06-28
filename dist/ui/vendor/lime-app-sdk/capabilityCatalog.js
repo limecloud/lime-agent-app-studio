@@ -10,7 +10,6 @@ const r = [
       "navigate",
       "openExternal",
       "download",
-      "selectDirectory",
       "getSnapshot",
       "openAgentRun",
       "updateAgentRun",
@@ -351,18 +350,6 @@ const r = [
     summary: "外部系统连接器、授权状态和受控集成调用。",
     appResponsibility: "声明业务连接需求和用户动作。",
     limeResponsibility: "托管 OAuth、secret、tenant policy 和审计。",
-    profile: { adapter: "adapter" }
-  },
-  {
-    name: "lime.cloudSession",
-    version: "0.1.0",
-    group: "governance",
-    stage: "preview",
-    owner: "cloud_overlay",
-    methods: ["getSnapshot", "getAccessToken", "requestLogin"],
-    summary: "宿主 Lime 当前云端会话快照、登录触发与 just-in-time 访问令牌能力，快照不暴露 bearer token。",
-    appResponsibility: "声明需要宿主会话的业务目的，并按需获取当前令牌后自行调用开放平台 API。",
-    limeResponsibility: "只暴露最小会话快照、按需签发短时 token，并保留登录与审计边界。",
     profile: { adapter: "adapter" }
   },
   {

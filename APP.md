@@ -18,6 +18,9 @@ requires:
     - lime.agent
     - lime.evidence
     - lime.cloudSession
+    - lime.storage
+presentation:
+  icon: ./assets/app-icon.svg
 categories:
   - developer
   - developer_only
@@ -61,6 +64,8 @@ license: Apache-2.0
 发布应用是 Lime 提供给已认证开发者的 Agent App 发布入口。开发者可以在 Lime 应用中心安装它，并通过可视化工作台或 npm CLI 将 Agent App 打包、Dry-run 和发布到 LimeCore 云端。
 
 当 Studio 嵌入 Lime 时，发布认证会通过 `lime.cloudSession` 从宿主即时获取当前会话 token；CLI 或脱离宿主场景可以继续使用环境变量或命令行临时 token，但不会把 token 写入本机配置。
+
+Logo 工坊通过 Lime 宿主的 `lime.agent` 任务生成应用中心图标；Studio 只负责将宿主返回的图片资产写入目标应用目录，并把 `presentation.icon` 写回 `APP.md`，确保生成结果随 `.lapp` 一起打包。
 
 ## CLI
 
